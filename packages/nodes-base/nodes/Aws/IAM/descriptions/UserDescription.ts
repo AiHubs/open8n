@@ -201,7 +201,7 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Path',
-				name: 'Path',
+				name: 'path',
 				type: 'string',
 				validateType: 'string',
 				default: '',
@@ -210,7 +210,7 @@ const createFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Permissions Boundary',
-				name: 'PermissionsBoundary',
+				name: 'permissionsBoundary',
 				default: '',
 				description:
 					'The ARN of the managed policy that is used to set the permissions boundary for the user',
@@ -220,7 +220,7 @@ const createFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Tags',
-				name: 'Tags',
+				name: 'tags',
 				type: 'fixedCollection',
 				description: 'A list of tags that you want to attach to the new user',
 				default: [],
@@ -258,7 +258,7 @@ const createFields: INodeProperties[] = [
 const getFields: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'UserName',
+		name: 'userName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -349,7 +349,7 @@ const getAllFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Path Prefix',
-				name: 'PathPrefix',
+				name: 'pathPrefix',
 				type: 'string',
 				validateType: 'string',
 				default: '/',
@@ -363,7 +363,7 @@ const getAllFields: INodeProperties[] = [
 const deleteFields: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'UserName',
+		name: 'userName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -410,7 +410,7 @@ const deleteFields: INodeProperties[] = [
 const updateFields: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'UserName',
+		name: 'userName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -454,7 +454,7 @@ const updateFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'New User Name',
-		name: 'NewUserName',
+		name: 'newUserName',
 		default: '',
 		placeholder: 'e.g. JohnSmith',
 		type: 'string',
@@ -485,7 +485,7 @@ const updateFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'New Path',
-				name: 'NewPath',
+				name: 'newPath',
 				type: 'string',
 				validateType: 'string',
 				default: '/',
@@ -498,7 +498,7 @@ const updateFields: INodeProperties[] = [
 const addToGroupFields: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'UserName',
+		name: 'userName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -542,7 +542,7 @@ const addToGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -589,7 +589,7 @@ const addToGroupFields: INodeProperties[] = [
 const removeFromGroupFields: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'UserName',
+		name: 'userName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -633,7 +633,7 @@ const removeFromGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
