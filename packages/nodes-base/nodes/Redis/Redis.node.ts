@@ -1,13 +1,13 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash/set';
-
+import type { RedisCredential } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
@@ -27,8 +27,8 @@ export class Redis implements INodeType {
 		defaults: {
 			name: 'Redis',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -512,7 +512,7 @@ export class Redis implements INodeType {
 		//       have a parameter field for a path. Because it is not possible to set
 		//       array, object via parameter directly (should maybe be possible?!?!)
 		//       Should maybe have a parameter which is JSON.
-		const credentials = await this.getCredentials('redis');
+		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
 		await client.connect();
