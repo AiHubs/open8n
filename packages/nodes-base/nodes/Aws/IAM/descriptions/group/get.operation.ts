@@ -1,43 +1,12 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
+
+import { groupLocator } from '../common';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Group',
-		name: 'group',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...groupLocator,
 		description: 'Select the group you want to retrieve',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'groupName',
-				type: 'string',
-				hint: 'Enter the group name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
-			},
-		],
 	},
 	{
 		displayName: 'Include Users',

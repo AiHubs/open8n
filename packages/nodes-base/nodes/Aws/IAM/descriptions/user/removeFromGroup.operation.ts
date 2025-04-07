@@ -1,53 +1,15 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
+
+import { groupLocator, userLocator } from '../common';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'User',
-		name: 'user',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...userLocator,
 		description: 'Select the user you want to remove from the group',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'userName',
-				type: 'string',
-				hint: 'Enter the user name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The user name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
-			},
-		],
 	},
 	{
-		displayName: 'Group',
-		name: 'group',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...groupLocator,
 		description: 'Select the group you want to remove the user from',
 		modes: [
 			{
@@ -69,7 +31,7 @@ const properties: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the allowed pattern.',
+							errorMessage: 'The group name must follow the allowed pattern',
 						},
 					},
 				],

@@ -9,7 +9,7 @@ import * as removeFromGroup from './removeFromGroup.operation';
 import * as update from './update.operation';
 import { CURRENT_VERSION } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
-import { processUsersResponse, removeUserFromGroups } from '../../helpers/utils';
+import { removeUserFromGroups, simplifyGetAllUsersResponse } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -32,7 +32,12 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=AddUserToGroup&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}&GroupName={{ $parameter["group"] }}`,
+						body: {
+							Action: 'AddUserToGroup',
+							Version: CURRENT_VERSION,
+							UserName: '={{ $parameter["user"] }}',
+							GroupName: '={{ $parameter["group"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -48,7 +53,11 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=CreateUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["newUserName"] }}`,
+						body: {
+							Action: 'CreateUser',
+							Version: CURRENT_VERSION,
+							UserName: '={{ $parameter["userName"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -67,7 +76,11 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						url: `=/?Action=DeleteUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}`,
+						body: {
+							Action: 'DeleteUser',
+							Version: CURRENT_VERSION,
+							UserName: '={{ $parameter["user"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -78,12 +91,16 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve an user',
+				description: 'Retrieve a user',
 				action: 'Get user',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=GetUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}`,
+						body: {
+							Action: 'GetUser',
+							Version: CURRENT_VERSION,
+							UserName: '={{ $parameter["user"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -106,11 +123,14 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=ListUsers&Version=${CURRENT_VERSION}`,
+						body: {
+							Action: 'ListUsers',
+							Version: CURRENT_VERSION,
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processUsersResponse, handleError],
+						postReceive: [handleError, simplifyGetAllUsersResponse],
 					},
 				},
 				action: 'Get many users',
@@ -123,7 +143,12 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}&GroupName={{ $parameter["group"] }}`,
+						body: {
+							Action: 'RemoveUserFromGroup',
+							Version: CURRENT_VERSION,
+							UserName: '={{ $parameter["user"] }}',
+							GroupName: '={{ $parameter["group"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -139,7 +164,12 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName={{ $parameter["newUserName"] }}&UserName={{ $parameter["user"] }}`,
+						body: {
+							Action: 'UpdateUser',
+							Version: CURRENT_VERSION,
+							NewUserName: '={{ $parameter["userName"] }}',
+							UserName: '={{ $parameter["user"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {

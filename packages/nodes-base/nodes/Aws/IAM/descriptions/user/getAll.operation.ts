@@ -1,31 +1,11 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { validateLimit, validateUserPath } from '../../helpers/utils';
+import { validateUserPath } from '../../helpers/utils';
+import { paginationParameters } from '../common';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		type: 'boolean',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		default: 50,
-		description: 'Max number of results to return',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		validateType: 'number',
-		routing: {
-			send: {
-				preSend: [validateLimit],
-			},
-		},
-	},
+	...paginationParameters,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

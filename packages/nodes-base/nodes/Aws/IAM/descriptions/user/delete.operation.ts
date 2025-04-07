@@ -1,43 +1,12 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
+
+import { userLocator } from '../common';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'User',
-		name: 'user',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...userLocator,
 		description: 'Select the user you want to delete',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'userName',
-				type: 'string',
-				hint: 'Enter the user name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The user name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
-			},
-		],
 	},
 ];
 

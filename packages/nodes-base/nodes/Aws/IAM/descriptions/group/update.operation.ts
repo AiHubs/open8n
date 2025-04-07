@@ -1,67 +1,29 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import { validatePath } from '../../helpers/utils';
+import { groupLocator, groupNameParameter, pathParameter } from '../common';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Group',
-		name: 'group',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...groupLocator,
 		description: 'Select the group you want to update',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'groupName',
-				type: 'string',
-				hint: 'Enter the group name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'New Name',
-		name: 'newGroupName',
-		default: '',
-		required: true,
-		placeholder: 'e.g. GroupName',
+		...groupNameParameter,
 		description: 'The new name of the group',
-		type: 'string',
 	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
-				displayName: 'New Path',
-				name: 'newPath',
-				type: 'string',
-				default: '',
+				...pathParameter,
 				placeholder: 'e.g. /division_abc/engineering/',
-				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
+				description: 'The new path to the group, if it is not included, it defaults to a slash (/)',
 				routing: {
 					send: {
 						preSend: [validatePath],
@@ -71,8 +33,6 @@ const properties: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
 	},
 ];
 

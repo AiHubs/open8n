@@ -1,57 +1,17 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import { validatePath } from '../../helpers/utils';
+import { pathParameter, userLocator, userNameParameter } from '../common';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'User',
-		name: 'user',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...userLocator,
 		description: 'Select the user you want to update',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'userName',
-				type: 'string',
-				hint: 'Enter the user name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The user name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
-			},
-		],
 	},
 	{
-		displayName: 'New User Name',
-		name: 'newUserName',
-		default: '',
-		placeholder: 'e.g. JohnSmith',
-		type: 'string',
-		validateType: 'string',
-		required: true,
-		typeOptions: {
-			regex: '^[a-zA-Z0-9+=,.@_-]+$',
-		},
+		...userNameParameter,
+		description: 'The new name of the user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -61,16 +21,13 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'New Path',
-				name: 'newPath',
-				type: 'string',
-				validateType: 'string',
-				default: '/',
+				...pathParameter,
+				// default: '/', // ToDo: This differed between create and update, check which is correct
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
 				routing: {
 					send: {
 						preSend: [validatePath],
-						property: 'newPath',
+						property: 'NewPath',
 						value: '={{ $value }}',
 					},
 				},
