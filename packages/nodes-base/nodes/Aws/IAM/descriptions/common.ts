@@ -42,7 +42,6 @@ export const userLocator: INodeProperties = {
 		mode: 'list',
 		value: '',
 	},
-	// description is not included as it differs between operations
 	modes: [
 		{
 			displayName: 'From list',
@@ -81,7 +80,6 @@ export const groupLocator: INodeProperties = {
 		mode: 'list',
 		value: '',
 	},
-	// description is not included as it differs between operations
 	modes: [
 		{
 			displayName: 'From list',
@@ -116,10 +114,7 @@ export const pathParameter: INodeProperties = {
 	name: 'path',
 	type: 'string',
 	validateType: 'string',
-	default: '',
-	// placeholder is not included as it differs between resources
-	// description is not included as it differs between operations
-	// routing is not included as it differs between operations
+	default: '/',
 };
 
 export const groupNameParameter: INodeProperties = {
@@ -134,7 +129,6 @@ export const groupNameParameter: INodeProperties = {
 	},
 	default: '',
 	placeholder: 'e.g. GroupName',
-	// description is not included as it differs between operations
 };
 
 export const userNameParameter: INodeProperties = {
@@ -145,9 +139,7 @@ export const userNameParameter: INodeProperties = {
 	validateType: 'string',
 	default: '',
 	placeholder: 'e.g. JohnSmith',
-	// description is not included as it differs between operations
 	typeOptions: {
-		// ToDo: Check validation - differed between create and update
 		maxLength: 64,
 		regex: '^[A-Za-z0-9+=,\\.@_-]+$',
 	},

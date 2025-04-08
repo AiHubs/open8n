@@ -26,7 +26,11 @@ describe('AWS IAM - Create Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=CreateGroup&Version=${CURRENT_VERSION}&GroupName=NewGroupTest`)
+			.post('/', {
+				Action: 'CreateGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'NewGroupTest',
+			})
 			.reply(200, {
 				CreateGroupResponse: {
 					CreateGroupResult: {

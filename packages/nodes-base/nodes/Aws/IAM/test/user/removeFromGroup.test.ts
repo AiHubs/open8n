@@ -26,9 +26,12 @@ describe('AWS IAM - Remove User From Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&UserName=UserTest1&GroupName=GroupCreatedAfter`,
-			)
+			.post('/', {
+				Action: 'RemoveUserFromGroup',
+				Version: CURRENT_VERSION,
+				UserName: 'UserTest1',
+				GroupName: 'GroupCreatedAfter',
+			})
 			.reply(200, {
 				RemoveUserFromGroupResponse: {
 					ResponseMetadata: {

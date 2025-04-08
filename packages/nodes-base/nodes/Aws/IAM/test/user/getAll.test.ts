@@ -26,7 +26,10 @@ describe('AWS IAM - Get All Users', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=ListUsers&Version=${CURRENT_VERSION}&MaxItems=50`)
+			.post('/', {
+				Action: 'ListUsers',
+				Version: CURRENT_VERSION,
+			})
 			.reply(200, {
 				ListUsersResponse: {
 					ListUsersResult: {

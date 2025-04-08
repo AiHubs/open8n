@@ -26,7 +26,11 @@ describe('AWS IAM - Get Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=GroupNameUpdated2`)
+			.post('/', {
+				Action: 'GetGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupNameUpdated2',
+			})
 			.reply(200, {
 				GetGroupResponse: {
 					GetGroupResult: {

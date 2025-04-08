@@ -1,20 +1,20 @@
-import { NodeApiError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
-	searchUsersForGroup,
-	presendStringifyBody,
-	processGroupsResponse,
-	processUsersResponse,
+	preprocessTags,
 	deleteGroupMembers,
 	validatePath,
-	validateLimit,
 	validateUserPath,
 	removeUserFromGroups,
+	findUsersForGroup,
+	simplifyGetGroupsResponse,
+	simplifyGetAllGroupsResponse,
+	simplifyGetAllUsersResponse,
 } from '../../helpers/utils';
-import { makeAwsRequest } from '../../transport';
+import { awsApiRequest } from '../../transport';
 
 jest.mock('../../transport', () => ({
-	makeAwsRequest: jest.fn(),
+	awsApiRequest: jest.fn(),
 }));
 
 describe('AWS IAM - Helper Functions', () => {
@@ -27,111 +27,58 @@ describe('AWS IAM - Helper Functions', () => {
 		};
 	});
 
-	describe('presendStringifyBody', () => {
-		it('should stringify the body if it exists', async () => {
-			const requestOptions = { body: { key: 'value' }, headers: {}, url: '' };
-			const result = await presendStringifyBody.call(mockNode, requestOptions);
-			expect(result.body).toBe('{"key":"value"}');
-		});
-
-		it('should not modify the body if it does not exist', async () => {
-			const requestOptions = { headers: {}, url: '' };
-			const result = await presendStringifyBody.call(mockNode, requestOptions);
-			expect(result.body).toBeUndefined();
-		});
-	});
-
-	describe('searchUsersForGroup', () => {
-		it('should throw an error if no groupName is provided', async () => {
-			mockNode.getNodeParameter.mockReturnValue(undefined);
-			await expect(searchUsersForGroup.call(mockNode, '')).rejects.toThrowError(NodeApiError);
-		});
-
+	describe('findUsersForGroup', () => {
 		it('should return users for a valid groupName', async () => {
 			mockNode.getNodeParameter.mockReturnValue('groupName');
 			const mockResponse = {
 				GetGroupResponse: { GetGroupResult: { Users: [{ UserName: 'user1' }] } },
 			};
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
-			const result = await searchUsersForGroup.call(mockNode, 'groupName');
+			const result = await findUsersForGroup.call(mockNode, 'groupName');
 			expect(result).toEqual([{ UserName: 'user1' }]);
 		});
 	});
 
-	describe('processGroupsResponse', () => {
-		it('should return the group if includeUsers is false', async () => {
-			mockNode.getNodeParameter.mockReturnValue(false);
-			const response = {
-				ListGroupsResponse: { ListGroupsResult: { Groups: [{ GroupName: 'group1' }] } },
-			};
-			const result = await processGroupsResponse.call(mockNode, [], { body: response });
-			expect(result).toEqual([{ json: { GroupName: 'group1' } }]);
-		});
-
-		it('should return the group with users if includeUsers is true', async () => {
-			mockNode.getNodeParameter.mockReturnValue(true);
-			const response = {
-				ListGroupsResponse: { ListGroupsResult: { Groups: [{ GroupName: 'group1' }] } },
-			};
-			const mockUsers = [{ UserName: 'user1' }];
-			(makeAwsRequest as jest.Mock).mockResolvedValue({
-				GetGroupResponse: { GetGroupResult: { Users: mockUsers } },
+	describe('preprocessTags', () => {
+		it('should preprocess tags correctly into request body', async () => {
+			mockNode.getNodeParameter.mockReturnValue({
+				tags: [
+					{ key: 'Department', value: 'Engineering' },
+					{ key: 'Role', value: 'Developer' },
+				],
 			});
 
-			const result = await processGroupsResponse.call(mockNode, [], { body: response });
-			expect(result).toEqual([{ json: { GroupName: 'group1', Users: mockUsers } }]);
-		});
-	});
+			const requestOptions = { body: '', headers: {}, url: '' };
+			const result = await preprocessTags.call(mockNode, requestOptions);
 
-	describe('processUsersResponse', () => {
-		it('should return user data for "get" operation', async () => {
-			mockNode.getNodeParameter.mockReturnValue('get');
-			const response = { GetUserResponse: { GetUserResult: { User: { UserName: 'user1' } } } };
-
-			const result = await processUsersResponse.call(mockNode, [], { body: response });
-			expect(result).toEqual([{ json: { UserName: 'user1' } }]);
-		});
-
-		it('should return a list of users for "getAll" operation', async () => {
-			mockNode.getNodeParameter.mockReturnValue('getAll');
-			const response = {
-				ListUsersResponse: { ListUsersResult: { Users: [{ UserName: 'user1' }] } },
-			};
-
-			const result = await processUsersResponse.call(mockNode, [], { body: response });
-			expect(result).toEqual([{ json: { UserName: 'user1' } }]);
+			expect(result.body).toBe(
+				'Tags.member.1.Key=Department&Tags.member.1.Value=Engineering&Tags.member.2.Key=Role&Tags.member.2.Value=Developer',
+			);
 		});
 	});
 
 	describe('deleteGroupMembers', () => {
-		it('should throw an error if no group is provided', async () => {
-			mockNode.getNodeParameter.mockReturnValue(undefined);
-			await expect(
-				deleteGroupMembers.call(mockNode, { headers: {}, url: '' }),
-			).rejects.toThrowError(NodeApiError);
-		});
-
 		it('should attempt to remove users from a group', async () => {
 			mockNode.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'group') {
-					return { value: 'groupName' };
+					return 'groupName';
 				}
 				return null;
 			});
 
 			const mockUsers = [{ UserName: 'user1' }];
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockUsers);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockUsers);
 
 			const requestOptions = { headers: {}, url: '' };
 			const result = await deleteGroupMembers.call(mockNode, requestOptions);
 
 			expect(result).toEqual(requestOptions);
 
-			expect(makeAwsRequest).toHaveBeenCalledWith(
+			expect(awsApiRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
-					url: expect.stringContaining('GroupName=groupName'),
+					body: expect.stringContaining('GroupName=groupName'),
 				}),
 			);
 		});
@@ -140,51 +87,160 @@ describe('AWS IAM - Helper Functions', () => {
 	describe('validatePath', () => {
 		it('should throw an error for invalid path length', async () => {
 			mockNode.getNodeParameter.mockReturnValue('');
-			await expect(validatePath.call(mockNode, {})).rejects.toThrowError(NodeApiError);
+			await expect(validatePath.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
+				NodeOperationError,
+			);
 		});
 
 		it('should throw an error for invalid path format', async () => {
 			mockNode.getNodeParameter.mockReturnValue('/invalidPath');
-			await expect(validatePath.call(mockNode, {})).rejects.toThrowError(NodeApiError);
-		});
-	});
-
-	describe('validateLimit', () => {
-		it('should throw an error if limit is not provided and returnAll is false', async () => {
-			mockNode.getNodeParameter.mockReturnValue(false);
-			mockNode.getNodeParameter.mockReturnValueOnce(undefined);
-
-			await expect(validateLimit.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
-				NodeApiError,
+			await expect(validatePath.call(mockNode, { url: '' })).rejects.toThrowError(
+				NodeOperationError,
 			);
 		});
 
-		it('should modify requestOptions if limit is provided', async () => {
-			mockNode.getNodeParameter.mockReturnValueOnce(false).mockReturnValueOnce(10);
-
-			const requestOptions = { url: '/some-url' };
-			const result = await validateLimit.call(mockNode, requestOptions);
-			expect(result.url).toContain('MaxItems=10');
+		it('should pass for a valid path', async () => {
+			mockNode.getNodeParameter.mockReturnValue('/valid/path/');
+			const result = await validatePath.call(mockNode, { headers: {}, url: '' });
+			expect(result).toEqual({ headers: {}, url: '' });
 		});
 	});
 
 	describe('validateUserPath', () => {
 		it('should throw an error for invalid path prefix', async () => {
 			mockNode.getNodeParameter.mockReturnValue('/invalidPrefix');
+
+			const mockResponse = {
+				ListUsersResponse: {
+					ListUsersResult: {
+						Users: [{ UserName: 'user1', Path: '/validPrefix/user1' }],
+					},
+				},
+			};
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+
 			await expect(validateUserPath.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
-				NodeApiError,
+				NodeOperationError,
 			);
+		});
+
+		it('should modify the request body with a valid path', async () => {
+			mockNode.getNodeParameter.mockReturnValue('/validPrefix/');
+			const requestOptions = { body: {}, headers: {}, url: '' };
+
+			const mockResponse = {
+				ListUsersResponse: {
+					ListUsersResult: {
+						Users: [{ UserName: 'user1', Path: '/validPrefix/user1' }],
+					},
+				},
+			};
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+
+			const result = await validateUserPath.call(mockNode, requestOptions);
+			expect(result.body).toHaveProperty('PathPrefix', '/validPrefix/');
+		});
+	});
+
+	describe('simplifyGetGroupsResponse', () => {
+		it('should return group data', async () => {
+			mockNode.getNodeParameter.mockReturnValue(false);
+			const mockResponse = {
+				body: { GetGroupResponse: { GetGroupResult: { Group: { GroupName: 'TestGroup' } } } },
+				headers: {},
+				url: '',
+				statusCode: 200,
+			};
+
+			const result = await simplifyGetGroupsResponse.call(mockNode, [], mockResponse);
+
+			expect(result).toEqual([{ json: { GroupName: 'TestGroup' } }]);
+		});
+
+		it('should include users if "includeUsers" is true', async () => {
+			mockNode.getNodeParameter.mockReturnValue(true);
+			const mockResponse = {
+				body: {
+					GetGroupResponse: {
+						GetGroupResult: { Group: { GroupName: 'TestGroup' }, Users: [{ UserName: 'user1' }] },
+					},
+				},
+				headers: {},
+				url: '',
+				statusCode: 200,
+			};
+
+			const result = await simplifyGetGroupsResponse.call(mockNode, [], mockResponse);
+
+			expect(result).toEqual([
+				{ json: { GroupName: 'TestGroup', Users: [{ UserName: 'user1' }] } },
+			]);
+		});
+	});
+
+	describe('simplifyGetAllGroupsResponse', () => {
+		it('should return groups without users if "includeUsers" is false', async () => {
+			mockNode.getNodeParameter.mockReturnValue(false);
+			const mockResponse = {
+				body: {
+					ListGroupsResponse: { ListGroupsResult: { Groups: [{ GroupName: 'TestGroup' }] } },
+				},
+				headers: {},
+				url: '',
+				statusCode: 200,
+			};
+
+			const result = await simplifyGetAllGroupsResponse.call(mockNode, [], mockResponse);
+
+			expect(result).toEqual([{ json: { GroupName: 'TestGroup' } }]);
+		});
+
+		it('should return groups with users if "includeUsers" is true', async () => {
+			mockNode.getNodeParameter.mockReturnValue(true);
+			const mockResponse = {
+				body: {
+					ListGroupsResponse: { ListGroupsResult: { Groups: [{ GroupName: 'TestGroup' }] } },
+				},
+				headers: {},
+				url: '',
+				statusCode: 200,
+			};
+
+			const mockUsers = [{ UserName: 'user1' }];
+			(awsApiRequest as jest.Mock).mockResolvedValueOnce({
+				GetGroupResponse: { GetGroupResult: { Users: mockUsers } },
+			});
+
+			const result = await simplifyGetAllGroupsResponse.call(mockNode, [], mockResponse);
+
+			expect(result).toEqual([{ json: { GroupName: 'TestGroup', Users: mockUsers } }]);
+		});
+	});
+
+	describe('simplifyGetAllUsersResponse', () => {
+		it('should return all users', async () => {
+			const mockResponse = {
+				body: { ListUsersResponse: { ListUsersResult: { Users: [{ UserName: 'user1' }] } } },
+				headers: {},
+				url: '',
+				statusCode: 200,
+			};
+			const result = await simplifyGetAllUsersResponse.call(mockNode, [], mockResponse);
+			expect(result).toEqual([{ json: { UserName: 'user1' } }]);
 		});
 	});
 
 	describe('removeUserFromGroups', () => {
-		it('should remove user from all groups', async () => {
+		it('should remove a user from all groups', async () => {
 			mockNode.getNodeParameter.mockReturnValue('user1');
 			const mockUserGroups = { results: [{ value: 'group1' }, { value: 'group2' }] };
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockUserGroups);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockUserGroups);
 
 			const requestOptions = { headers: {}, url: '' };
 			const result = await removeUserFromGroups.call(mockNode, requestOptions);
+
 			expect(result).toEqual(requestOptions);
 		});
 	});

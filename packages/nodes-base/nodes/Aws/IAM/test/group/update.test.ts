@@ -26,9 +26,12 @@ describe('AWS IAM -  Update Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=UpdateGroup&Version=${CURRENT_VERSION}&GroupName=GroupNameUpdated&NewGroupName=GroupNameUpdated2`,
-			)
+			.post('/', {
+				Action: 'UpdateGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupNameUpdated',
+				NewGroupName: 'GroupNameUpdated2',
+			})
 			.reply(200, {
 				UpdateGroupResponse: {
 					ResponseMetadata: {

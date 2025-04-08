@@ -7,42 +7,56 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-// ToDo: Extract error type
-// I think this might be better as a function
-const ERROR_MAP: Record<string, (message: string) => IDataObject | undefined> = {
-	EntityAlreadyExists: (message) => {
-		if (message.includes('User')) {
+interface IAwsError {
+	Code: string;
+	Message: string;
+}
+
+interface IErrorResponse {
+	message: string;
+	description: string;
+}
+
+function mapErrorToResponse(errorCode: string, errorMessage: string): IErrorResponse | undefined {
+	if (errorCode === 'EntityAlreadyExists') {
+		if (errorMessage.includes('User')) {
 			return {
-				message: 'User already exists',
+				message: errorMessage,
 				description: 'Users must have unique names. Enter a different name for the new user.',
 			};
 		}
-		if (message.includes('Group')) {
+		if (errorMessage.includes('Group')) {
 			return {
-				message: 'Group already exists',
+				message: errorMessage,
 				description: 'Groups must have unique names. Enter a different name for the new group.',
 			};
 		}
-	},
-	NoSuchEntity: (message) => {
-		if (message.includes('user')) {
+	}
+
+	if (errorCode === 'NoSuchEntity') {
+		if (errorMessage.includes('User')) {
 			return {
-				message: 'User does not exist',
+				message: errorMessage,
 				description: 'The given user was not found - try entering a different user.',
 			};
 		}
-		if (message.includes('group')) {
+		if (errorMessage.includes('Group')) {
 			return {
-				message: 'Group does not exist',
+				message: errorMessage,
 				description: 'The given group was not found - try entering a different group.',
 			};
 		}
-	},
-	DeleteConflict: () => ({
-		message: 'User is in a group',
-		description: 'Cannot delete entity, must remove users from group first.',
-	}),
-};
+	}
+
+	if (errorCode === 'DeleteConflict') {
+		return {
+			message: errorMessage,
+			description: 'Cannot delete entity, please remove users from group first.',
+		};
+	}
+
+	return undefined;
+}
 
 export async function handleError(
 	this: IExecuteSingleFunctions,
@@ -56,25 +70,23 @@ export async function handleError(
 	}
 
 	const responseBody = response.body as IDataObject;
-	const error = responseBody.Error as IDataObject;
+	const error = responseBody.Error as IAwsError;
 
 	if (!error) {
-		// ToDo: Can this happen? Better to keep the original API error?
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-			message: 'Unexpected Error',
-			description: 'An unexpected error occurred. Please check the request and try again.',
-		});
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 
-	const errorCode = error.Code as string;
-	const errorMessage = error.Message as string;
+	const errorCode = error.Code;
+	const errorMessage = error.Message;
 
-	// ToDo: Instead of unexpected error, return the true API error when no mapping
-	const specificError = ERROR_MAP[errorCode]?.(errorMessage) ?? {
-		message: errorCode || 'Unknown Error',
-		description:
-			errorMessage || 'An unexpected error occurred. Please check the request and try again.',
-	};
+	const specificError = mapErrorToResponse(errorCode, errorMessage);
 
-	throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
+	if (specificError) {
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
+	} else {
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+			message: errorCode,
+			description: errorMessage,
+		});
+	}
 }

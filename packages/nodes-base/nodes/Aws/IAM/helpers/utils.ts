@@ -1,3 +1,4 @@
+import { returnJsonArray } from 'n8n-core';
 import type {
 	IHttpRequestOptions,
 	IDataObject,
@@ -30,7 +31,7 @@ export async function encodeBodyAsFormUrlEncoded(
 	return requestOptions;
 }
 
-async function findUsersForGroup(
+export async function findUsersForGroup(
 	this: IExecuteSingleFunctions,
 	groupName: string,
 ): Promise<IDataObject[]> {
@@ -75,16 +76,13 @@ export async function simplifyGetAllGroupsResponse(
 	}
 
 	if (!includeUsers) {
-		return groups.map((group) => ({ json: group })); // ToDo : Use n8n function
+		return returnJsonArray(groups);
 	}
 
 	const processedItems: INodeExecutionData[] = [];
 	for (const group of groups) {
-		if (group.GroupName) {
-			// ToDo: Is this check needed? Isn't GroupName mandatory?
-			const users = await findUsersForGroup.call(this, group.GroupName as string); // ToDo: Use interface for IGroup where groups is defined
-			processedItems.push({ json: { ...group, Users: users } });
-		}
+		const users = await findUsersForGroup.call(this, group.GroupName as string);
+		processedItems.push({ json: { ...group, Users: users } });
 	}
 	return processedItems;
 }
@@ -99,10 +97,9 @@ export async function simplifyGetAllUsersResponse(
 	}
 	const users =
 		(response.body as IGetAllUsersResponseBody)?.ListUsersResponse?.ListUsersResult?.Users ?? [];
-	return users.map((user) => ({ json: user })); // ToDo: Use n8n function
+	return returnJsonArray(users);
 }
 
-// ToDo: Check if this can be optimized
 export async function deleteGroupMembers(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -134,8 +131,10 @@ export async function deleteGroupMembers(
 					ignoreHttpStatusErrors: true,
 				});
 			} catch (error) {
-				// ToDo: I think we shouldn't console log that? Should we throw an error?
-				console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
+				throw new NodeOperationError(
+					this.getNode(),
+					`⚠️ Failed to remove user "${userName}" from "${groupName}":`,
+				);
 			}
 		}),
 	);
@@ -172,13 +171,19 @@ export async function validateUserPath(
 ): Promise<IHttpRequestOptions> {
 	const prefix = this.getNodeParameter('additionalFields.pathPrefix') as string;
 
-	// ToDo: Is that the full validation? validatePath() uses a regex.
-	// If nothing else is needed why don't we correct for that when sending instead of validating?
-	if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-		);
+	let formattedPrefix = prefix;
+	if (!formattedPrefix.startsWith('/')) {
+		formattedPrefix = '/' + formattedPrefix;
+	}
+	if (!formattedPrefix.endsWith('/') && formattedPrefix !== '/') {
+		formattedPrefix = formattedPrefix + '/';
+	}
+
+	if (requestOptions.body && typeof requestOptions.body === 'object') {
+		requestOptions.body = {
+			...(requestOptions.body as object),
+			PathPrefix: formattedPrefix,
+		};
 	}
 
 	const options: IHttpRequestOptions = {
@@ -193,16 +198,18 @@ export async function validateUserPath(
 
 	const users = responseData.ListUsersResponse.ListUsersResult.Users as IUser[];
 	if (!users || users.length === 0) {
-		// ToDo: Should the error be '... Please adjust the "Path" parameter and try again.'?
-		throw new NodeOperationError(this.getNode(), 'No users found in the group. Please try again.');
+		throw new NodeOperationError(
+			this.getNode(),
+			'No users found. Please adjust the "Path" parameter and try again.',
+		);
 	}
 
 	const userPaths = users.map((user) => user.Path).filter(Boolean);
-	const isPathValid = userPaths.some((path) => path?.startsWith(prefix));
+	const isPathValid = userPaths.some((path) => path?.startsWith(formattedPrefix));
 	if (!isPathValid) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`The "${prefix}" path was not found in your users. Try entering a different path.`,
+			`The "${formattedPrefix}" path was not found in your users. Try entering a different path.`,
 		);
 	}
 	return requestOptions;
@@ -245,13 +252,19 @@ export async function preprocessTags(
 	const tagsData = this.getNodeParameter('additionalFields.tags') as ITags;
 	const tags = tagsData?.tags || [];
 
-	requestOptions.body ??= {};
+	let bodyObj: Record<string, string> = {};
+	if (typeof requestOptions.body === 'string') {
+		const params = new URLSearchParams(requestOptions.body);
+		bodyObj = Object.fromEntries(params.entries());
+	}
+
 	tags.forEach((tag, index) => {
-		// @ts-expect-error The line above ensures that body is defined
-		requestOptions.body[`Tags.member.${index + 1}.Key`] = tag.key;
-		// @ts-expect-error The line above ensures that body is defined
-		requestOptions.body[`Tags.member.${index + 1}.Value`] = tag.value;
+		bodyObj[`Tags.member.${index + 1}.Key`] = tag.key;
+		bodyObj[`Tags.member.${index + 1}.Value`] = tag.value;
 	});
+
+	requestOptions.body = new URLSearchParams(bodyObj).toString();
+
 	return requestOptions;
 }
 
@@ -277,5 +290,3 @@ export async function removeUserFromGroups(
 
 	return requestOptions;
 }
-
-// ToDo: Do we need a handle pagination with a function? A function that wasn't used was removed.

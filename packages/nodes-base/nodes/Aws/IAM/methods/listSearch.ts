@@ -1,10 +1,11 @@
-import type {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	INodeListSearchItems,
-	INodeListSearchResult,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
+	type INodeListSearchItems,
+	type INodeListSearchResult,
 } from 'n8n-workflow';
 
 import { CURRENT_VERSION } from '../helpers/constants';
@@ -15,7 +16,6 @@ import type {
 } from '../helpers/types';
 import { awsApiRequest } from '../transport';
 
-// ToDo: Check correct property name is passed (GroupName or UserName)
 function formatSearchResults(
 	items: IDataObject[],
 	propertyName: string,
@@ -41,7 +41,7 @@ export async function searchUsers(
 		body: {
 			Action: 'ListUsers',
 			Version: CURRENT_VERSION,
-			...(paginationToken ? { Marker: paginationToken } : {}), // Only add marker when it exists
+			...(paginationToken ? { Marker: paginationToken } : {}),
 		},
 	};
 	const responseData = (await awsApiRequest.call(this, options)) as IGetAllUsersResponseBody;
@@ -68,7 +68,7 @@ export async function searchGroups(
 		body: {
 			Action: 'ListGroups',
 			Version: CURRENT_VERSION,
-			...(paginationToken ? { Marker: paginationToken } : {}), // Only add marker when it exists
+			...(paginationToken ? { Marker: paginationToken } : {}),
 		},
 	};
 
@@ -89,7 +89,7 @@ export async function searchGroupsForUser(
 	this: ILoadOptionsFunctions | IExecuteSingleFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const userName = this.getNodeParameter('user', { extractValue: true }) as string;
+	const userName = this.getNodeParameter('user', undefined, { extractValue: true });
 	let allGroups: IDataObject[] = [];
 	let nextMarkerGroups: string | undefined;
 	do {
@@ -99,7 +99,7 @@ export async function searchGroupsForUser(
 			body: {
 				Action: 'ListGroups',
 				Version: CURRENT_VERSION,
-				...(nextMarkerGroups ? { Marker: nextMarkerGroups } : {}), // Only add marker when it exists
+				...(nextMarkerGroups ? { Marker: nextMarkerGroups } : {}),
 			},
 		};
 
@@ -117,7 +117,6 @@ export async function searchGroupsForUser(
 		return { results: [] };
 	}
 
-	// ToDo: Why is this needed? Can we return the group array directly? We are making many requests.
 	const groupCheckPromises = allGroups.map(async (group) => {
 		const groupName = group.GroupName as string;
 		if (!groupName) {
@@ -134,21 +133,23 @@ export async function searchGroupsForUser(
 					GroupName: groupName,
 				},
 			};
-			const getGroupResponse = (await awsApiRequest.call(this, options)) as IGetGroupResponseBody;
 
+			const getGroupResponse = (await awsApiRequest.call(this, options)) as IGetGroupResponseBody;
 			const groupResult = getGroupResponse?.GetGroupResponse?.GetGroupResult;
 			const userExists = groupResult?.Users?.some((user) => user.UserName === userName);
+
 			if (userExists) {
 				return { UserName: userName, GroupName: groupName };
 			}
-		} catch (error) {} // ToDo: Explain why or don't ignore the errors. Why do we get errors?
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), `An error occurred during the request:${error}`);
+		}
 
 		return null;
 	});
 
 	const validUserGroups = (await Promise.all(groupCheckPromises)).filter(Boolean) as IDataObject[];
 
-	// ToDo: GroupName or UserName should be the property here?
 	return {
 		results: formatSearchResults(validUserGroups, 'GroupName', filter),
 	};

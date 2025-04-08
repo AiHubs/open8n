@@ -26,29 +26,40 @@ describe('AWS IAM - Delete Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=GroupTest1`)
+			.post('/', {
+				Action: 'GetGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupForTest1',
+			})
 			.reply(200, {
 				GetGroupResponse: {
 					GetGroupResult: {
-						Users: [{ UserName: 'User1' }, { UserName: 'User2' }],
+						Users: [{ UserName: 'User1' }],
 					},
 				},
 			});
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&GroupName=GroupTest1&UserName=User1`,
-			)
+			.post('/', {
+				Action: 'RemoveUserFromGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupForTest1',
+				UserName: 'User1',
+			})
 			.reply(200, {});
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=DeleteGroup&Version=${CURRENT_VERSION}&GroupName=GroupTest1`)
+			.post('/', {
+				Action: 'DeleteGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupForTest1',
+			})
 			.reply(200, {
 				DeleteGroupResponse: {
 					ResponseMetadata: {
-						RequestId: '03eee660-ffc4-46ff-81ec-13e4cfc3aee8',
+						RequestId: 'b9cc2642-db2c-4935-aaaf-eacf10e4f00a',
 					},
 				},
 			});

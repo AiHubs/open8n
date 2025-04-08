@@ -1,6 +1,10 @@
-import type { IDataObject } from 'n8n-workflow';
-
-// ToDo: Add IGroup
+export type IGroup = {
+	Arn: string;
+	CreateDate: number;
+	GroupId: string;
+	GroupName: string;
+	Path?: string;
+};
 
 export type IUser = {
 	Arn: string;
@@ -8,7 +12,7 @@ export type IUser = {
 	PasswordLastUsed?: number;
 	Path?: string;
 	PermissionsBoundary?: string;
-	Tags: Array<{ Key: string; Value: string }>; // ToDo: Can this be ITags[]?
+	Tags: Array<{ Key: string; Value: string }>;
 	UserId: string;
 	UserName: string;
 };
@@ -16,7 +20,7 @@ export type IUser = {
 export type IGetUserResponseBody = {
 	GetUserResponse: {
 		GetUserResult: {
-			User: IDataObject; // ToDo: Can this be IUser?
+			User: IUser;
 		};
 	};
 };
@@ -24,8 +28,8 @@ export type IGetUserResponseBody = {
 export type IGetGroupResponseBody = {
 	GetGroupResponse: {
 		GetGroupResult: {
-			Group: IDataObject; // ToDo: Can this be IGroup[]?
-			Users?: IDataObject[]; // ToDo: Can this be IUser[]?
+			Group: IGroup;
+			Users?: IUser[];
 		};
 	};
 };
@@ -33,7 +37,7 @@ export type IGetGroupResponseBody = {
 export type IGetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
-			Users: IDataObject[]; // ToDo: Can this be IUser[]?
+			Users: IUser[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
@@ -43,7 +47,7 @@ export type IGetAllUsersResponseBody = {
 export type IGetAllGroupsResponseBody = {
 	ListGroupsResponse: {
 		ListGroupsResult: {
-			Groups: IDataObject[]; // ToDo: Can this be IGroup[]?
+			Groups: IGroup[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
@@ -51,5 +55,5 @@ export type IGetAllGroupsResponseBody = {
 };
 
 export type ITags = {
-	tags: IDataObject[]; // ToDo: Should this be Array<{ Key: string; Value: string }>?
+	tags: Array<{ key: string; value: string }>;
 };

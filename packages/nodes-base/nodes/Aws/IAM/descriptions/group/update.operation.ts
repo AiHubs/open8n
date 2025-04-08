@@ -1,7 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { groupResourceLocator } from '../../helpers/resourceLocators';
 import { validatePath } from '../../helpers/utils';
 import { groupLocator, groupNameParameter, pathParameter } from '../common';
 

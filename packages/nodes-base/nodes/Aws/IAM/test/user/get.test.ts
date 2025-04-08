@@ -26,7 +26,11 @@ describe('AWS IAM - Get User', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetUser&Version=${CURRENT_VERSION}&UserName=accounts@this.de`)
+			.post('/', {
+				Action: 'GetUser',
+				Version: CURRENT_VERSION,
+				UserName: 'accounts@this.de',
+			})
 			.reply(200, {
 				GetUserResponse: {
 					GetUserResult: {

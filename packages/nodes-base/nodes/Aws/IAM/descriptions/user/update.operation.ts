@@ -1,7 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userResourceLocator } from '../../helpers/resourceLocators';
 import { validatePath } from '../../helpers/utils';
 import { pathParameter, userLocator, userNameParameter } from '../common';
 
@@ -23,13 +22,12 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				...pathParameter,
-				// default: '/', // ToDo: This differed between create and update, check which is correct
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
 				routing: {
 					send: {
 						preSend: [validatePath],
 						property: 'NewPath',
-						value: '={{ $value }}',
+						type: 'query',
 					},
 				},
 			},

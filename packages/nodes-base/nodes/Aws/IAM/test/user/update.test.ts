@@ -26,13 +26,16 @@ describe('AWS IAM - Update User', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName=NewName&UserName=UserTest101`,
-			)
+			.post('/', {
+				Action: 'UpdateUser',
+				Version: CURRENT_VERSION,
+				UserName: 'NewUser',
+				NewUserName: 'UserTest',
+			})
 			.reply(200, {
 				UpdateUserResponse: {
 					ResponseMetadata: {
-						RequestId: '3fee55bf-1157-4db2-a63c-eab6b6ec1b3b',
+						RequestId: 'bdb4a8b5-627a-41a7-aba9-5733b7869c16',
 					},
 				},
 			});

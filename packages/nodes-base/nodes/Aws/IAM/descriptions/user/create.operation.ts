@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 					send: {
 						preSend: [validatePath],
 						property: 'Path',
-						value: '={{ $value }}',
+						type: 'query',
 					},
 				},
 			},

@@ -1,12 +1,8 @@
-import type {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { user, group } from './descriptions';
+import { REQUEST_DEFAULTS } from './helpers/constants';
 import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
 
@@ -28,14 +24,7 @@ export class AwsIam implements INodeType {
 				required: true,
 			},
 		],
-		requestDefaults: {
-			baseURL: 'https://iam.amazonaws.com',
-			url: '',
-			json: true,
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-		},
+		requestDefaults: REQUEST_DEFAULTS,
 		properties: [
 			{
 				displayName: 'Resource',
@@ -55,17 +44,7 @@ export class AwsIam implements INodeType {
 				],
 				routing: {
 					send: {
-						preSend: [
-							encodeBodyAsFormUrlEncoded,
-							// ToDo: Remove
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								console.log('requestOptions', requestOptions);
-								return requestOptions;
-							},
-						],
+						preSend: [encodeBodyAsFormUrlEncoded],
 					},
 				},
 			},
