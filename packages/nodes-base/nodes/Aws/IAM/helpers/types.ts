@@ -1,4 +1,4 @@
-export type IGroup = {
+export type Group = {
 	Arn: string;
 	CreateDate: number;
 	GroupId: string;
@@ -6,7 +6,7 @@ export type IGroup = {
 	Path?: string;
 };
 
-export type IUser = {
+export type User = {
 	Arn: string;
 	CreateDate: number;
 	PasswordLastUsed?: number;
@@ -17,43 +17,60 @@ export type IUser = {
 	UserName: string;
 };
 
-export type IGetUserResponseBody = {
+export type Tags = {
+	tags: Array<{ key: string; value: string }>;
+};
+
+export type GetUserResponseBody = {
 	GetUserResponse: {
 		GetUserResult: {
-			User: IUser;
+			User: User;
 		};
 	};
 };
 
-export type IGetGroupResponseBody = {
+export type GetGroupResponseBody = {
 	GetGroupResponse: {
 		GetGroupResult: {
-			Group: IGroup;
-			Users?: IUser[];
+			Group: Group;
+			Users?: User[];
 		};
 	};
 };
 
-export type IGetAllUsersResponseBody = {
+export type GetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
-			Users: IUser[];
+			Users: User[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
 	};
 };
 
-export type IGetAllGroupsResponseBody = {
+export type GetAllGroupsResponseBody = {
 	ListGroupsResponse: {
 		ListGroupsResult: {
-			Groups: IGroup[];
+			Groups: Group[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
 	};
 };
 
-export type ITags = {
-	tags: Array<{ key: string; value: string }>;
+export type AwsError = {
+	Code: string;
+	Message: string;
+};
+
+export type ErrorResponse = {
+	Error: {
+		Code: string;
+		Message: string;
+	};
+};
+
+export type ErrorMessage = {
+	message: string;
+	description: string;
 };

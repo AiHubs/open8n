@@ -1,18 +1,19 @@
-import {
-	NodeOperationError,
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	type ILoadOptionsFunctions,
-	type INodeListSearchItems,
-	type INodeListSearchResult,
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { CURRENT_VERSION } from '../helpers/constants';
 import type {
-	IGetAllGroupsResponseBody,
-	IGetAllUsersResponseBody,
-	IGetGroupResponseBody,
+	GetAllGroupsResponseBody,
+	GetAllUsersResponseBody,
+	GetGroupResponseBody,
 } from '../helpers/types';
 import { awsApiRequest } from '../transport';
 
@@ -44,7 +45,7 @@ export async function searchUsers(
 			...(paginationToken ? { Marker: paginationToken } : {}),
 		},
 	};
-	const responseData = (await awsApiRequest.call(this, options)) as IGetAllUsersResponseBody;
+	const responseData = (await awsApiRequest.call(this, options)) as GetAllUsersResponseBody;
 
 	const users = responseData.ListUsersResponse.ListUsersResult.Users || [];
 	const nextMarker = responseData.ListUsersResponse.ListUsersResult.IsTruncated
@@ -72,7 +73,7 @@ export async function searchGroups(
 		},
 	};
 
-	const responseData = (await awsApiRequest.call(this, options)) as IGetAllGroupsResponseBody;
+	const responseData = (await awsApiRequest.call(this, options)) as GetAllGroupsResponseBody;
 
 	const groups = responseData.ListGroupsResponse.ListGroupsResult.Groups || [];
 	const nextMarker = responseData.ListGroupsResponse.ListGroupsResult.IsTruncated
@@ -103,7 +104,7 @@ export async function searchGroupsForUser(
 			},
 		};
 
-		const groupsData = (await awsApiRequest.call(this, options)) as IGetAllGroupsResponseBody;
+		const groupsData = (await awsApiRequest.call(this, options)) as GetAllGroupsResponseBody;
 
 		const groups = groupsData.ListGroupsResponse?.ListGroupsResult?.Groups || [];
 		nextMarkerGroups = groupsData.ListGroupsResponse?.ListGroupsResult?.IsTruncated
@@ -134,7 +135,7 @@ export async function searchGroupsForUser(
 				},
 			};
 
-			const getGroupResponse = (await awsApiRequest.call(this, options)) as IGetGroupResponseBody;
+			const getGroupResponse = (await awsApiRequest.call(this, options)) as GetGroupResponseBody;
 			const groupResult = getGroupResponse?.GetGroupResponse?.GetGroupResult;
 			const userExists = groupResult?.Users?.some((user) => user.UserName === userName);
 
@@ -142,7 +143,9 @@ export async function searchGroupsForUser(
 				return { UserName: userName, GroupName: groupName };
 			}
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), `An error occurred during the request:${error}`);
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: `Failed to get group ${groupName}: ${error?.message ?? 'Unknown error'}`,
+			});
 		}
 
 		return null;

@@ -1,20 +1,19 @@
-import { returnJsonArray } from 'n8n-core';
 import type {
 	IHttpRequestOptions,
 	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { CURRENT_VERSION } from './constants';
 import type {
-	IGetAllGroupsResponseBody,
-	IGetAllUsersResponseBody,
-	IGetGroupResponseBody,
-	ITags,
-	IUser,
+	GetAllGroupsResponseBody,
+	GetAllUsersResponseBody,
+	GetGroupResponseBody,
+	Tags,
 } from './types';
 import { searchGroupsForUser } from '../methods/listSearch';
 import { awsApiRequest } from '../transport';
@@ -44,7 +43,7 @@ export async function findUsersForGroup(
 			GroupName: groupName,
 		}).toString(),
 	};
-	const responseData = (await awsApiRequest.call(this, options)) as IGetGroupResponseBody;
+	const responseData = (await awsApiRequest.call(this, options)) as GetGroupResponseBody;
 	return responseData?.GetGroupResponse?.GetGroupResult?.Users ?? [];
 }
 
@@ -54,7 +53,7 @@ export async function simplifyGetGroupsResponse(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const includeUsers = this.getNodeParameter('includeUsers', false);
-	const responseBody = response.body as IGetGroupResponseBody;
+	const responseBody = response.body as GetGroupResponseBody;
 	const groupData = responseBody.GetGroupResponse.GetGroupResult;
 	const group = groupData.Group;
 	return [
@@ -68,7 +67,7 @@ export async function simplifyGetAllGroupsResponse(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const includeUsers = this.getNodeParameter('includeUsers', false);
-	const responseBody = response.body as IGetAllGroupsResponseBody;
+	const responseBody = response.body as GetAllGroupsResponseBody;
 	const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
 
 	if (groups.length === 0) {
@@ -76,12 +75,12 @@ export async function simplifyGetAllGroupsResponse(
 	}
 
 	if (!includeUsers) {
-		return returnJsonArray(groups);
+		return this.helpers.returnJsonArray(groups);
 	}
 
 	const processedItems: INodeExecutionData[] = [];
 	for (const group of groups) {
-		const users = await findUsersForGroup.call(this, group.GroupName as string);
+		const users = await findUsersForGroup.call(this, group.GroupName);
 		processedItems.push({ json: { ...group, Users: users } });
 	}
 	return processedItems;
@@ -95,9 +94,9 @@ export async function simplifyGetAllUsersResponse(
 	if (!response.body) {
 		return [];
 	}
-	const users =
-		(response.body as IGetAllUsersResponseBody)?.ListUsersResponse?.ListUsersResult?.Users ?? [];
-	return returnJsonArray(users);
+	const responseBody = response.body as GetAllUsersResponseBody;
+	const users = responseBody?.ListUsersResponse?.ListUsersResult?.Users ?? [];
+	return this.helpers.returnJsonArray(users);
 }
 
 export async function deleteGroupMembers(
@@ -131,10 +130,9 @@ export async function deleteGroupMembers(
 					ignoreHttpStatusErrors: true,
 				});
 			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`⚠️ Failed to remove user "${userName}" from "${groupName}":`,
-				);
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
+					message: `Failed to remove user "${userName}" from "${groupName}"!`,
+				});
 			}
 		}),
 	);
@@ -150,7 +148,7 @@ export async function validatePath(
 	if (path.length < 1 || path.length > 512) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'The "Path" parameter must be between 1 and 512 characters long',
+			'The "Path" parameter must be between 1 and 512 characters long.',
 		);
 	}
 
@@ -158,7 +156,7 @@ export async function validatePath(
 	if (!validPathRegex.test(path) && path !== '/') {
 		throw new NodeOperationError(
 			this.getNode(),
-			"Ensure the path follows the pattern: starts and ends with '/' e.g. /division_abc/subdivision_xyz/",
+			"Ensure the path follows the pattern: starts and ends with '/' e.g. /division_abc/subdivision_xyz/.",
 		);
 	}
 
@@ -180,10 +178,8 @@ export async function validateUserPath(
 	}
 
 	if (requestOptions.body && typeof requestOptions.body === 'object') {
-		requestOptions.body = {
-			...(requestOptions.body as object),
-			PathPrefix: formattedPrefix,
-		};
+		// @ts-expect-error The if statement ensures that there is body
+		requestOptions.body.PathPrefix = formattedPrefix;
 	}
 
 	const options: IHttpRequestOptions = {
@@ -194,9 +190,9 @@ export async function validateUserPath(
 			Version: CURRENT_VERSION,
 		},
 	};
-	const responseData = (await awsApiRequest.call(this, options)) as IGetAllUsersResponseBody;
+	const responseData = (await awsApiRequest.call(this, options)) as GetAllUsersResponseBody;
 
-	const users = responseData.ListUsersResponse.ListUsersResult.Users as IUser[];
+	const users = responseData.ListUsersResponse.ListUsersResult.Users;
 	if (!users || users.length === 0) {
 		throw new NodeOperationError(
 			this.getNode(),
@@ -229,7 +225,7 @@ export async function validatePermissionsBoundary(
 		if (!arnPattern.test(permissionsBoundary)) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'The permissions boundary must be in ARN format, e.g., arn:aws:iam::123456789012:policy/ExamplePolicy',
+				'The permissions boundary must be in ARN format, e.g., arn:aws:iam::123456789012:policy/ExamplePolicy.',
 			);
 		}
 
@@ -249,7 +245,7 @@ export async function preprocessTags(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const tagsData = this.getNodeParameter('additionalFields.tags') as ITags;
+	const tagsData = this.getNodeParameter('additionalFields.tags') as Tags;
 	const tags = tagsData?.tags || [];
 
 	let bodyObj: Record<string, string> = {};

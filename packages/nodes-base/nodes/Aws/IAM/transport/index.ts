@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { REQUEST_DEFAULTS } from '../helpers/constants';
+import { BASE_URL } from '../helpers/constants';
 
 const errorMapping: IDataObject = {
 	403: 'The AWS credentials are not valid!',
@@ -19,10 +19,11 @@ export async function awsApiRequest(
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
 	const requestOptions: IHttpRequestOptions = {
-		...REQUEST_DEFAULTS,
+		baseURL: BASE_URL,
+		json: true,
 		...opts,
 		headers: {
-			...REQUEST_DEFAULTS.headers,
+			'Content-Type': 'application/x-www-form-urlencoded',
 			...(opts.headers ?? {}),
 		},
 	};
@@ -37,6 +38,7 @@ export async function awsApiRequest(
 			'aws',
 			requestOptions,
 		)) as IDataObject;
+
 		return response;
 	} catch (error) {
 		const statusCode = (error?.statusCode || error?.cause?.statusCode) as string;

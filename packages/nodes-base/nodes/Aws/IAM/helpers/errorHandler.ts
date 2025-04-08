@@ -7,17 +7,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-interface IAwsError {
-	Code: string;
-	Message: string;
-}
+import type { AwsError, ErrorMessage } from './types';
 
-interface IErrorResponse {
-	message: string;
-	description: string;
-}
-
-function mapErrorToResponse(errorCode: string, errorMessage: string): IErrorResponse | undefined {
+function mapErrorToResponse(errorCode: string, errorMessage: string): ErrorMessage | undefined {
 	if (errorCode === 'EntityAlreadyExists') {
 		if (errorMessage.includes('User')) {
 			return {
@@ -70,23 +62,20 @@ export async function handleError(
 	}
 
 	const responseBody = response.body as IDataObject;
-	const error = responseBody.Error as IAwsError;
+	const error = responseBody.Error as AwsError;
 
 	if (!error) {
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 
-	const errorCode = error.Code;
-	const errorMessage = error.Message;
-
-	const specificError = mapErrorToResponse(errorCode, errorMessage);
+	const specificError = mapErrorToResponse(error.Code, error.Message);
 
 	if (specificError) {
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
 	} else {
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-			message: errorCode,
-			description: errorMessage,
+			message: error.Code,
+			description: error.Message,
 		});
 	}
 }

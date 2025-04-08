@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { user, group } from './descriptions';
-import { REQUEST_DEFAULTS } from './helpers/constants';
+import { BASE_URL } from './helpers/constants';
 import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
 
@@ -24,7 +24,13 @@ export class AwsIam implements INodeType {
 				required: true,
 			},
 		],
-		requestDefaults: REQUEST_DEFAULTS,
+		requestDefaults: {
+			baseURL: BASE_URL,
+			json: true,
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+		},
 		properties: [
 			{
 				displayName: 'Resource',
