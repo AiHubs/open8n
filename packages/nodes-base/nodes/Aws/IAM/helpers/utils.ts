@@ -158,7 +158,7 @@ export async function validatePath(
 	if (!validPathRegex.test(path) && path !== '/') {
 		throw new NodeOperationError(
 			this.getNode(),
-			'Ensure the path follows the pattern: /division_abc/subdivision_xyz/',
+			"Ensure the path follows the pattern: starts and ends with '/' e.g. /division_abc/subdivision_xyz/",
 		);
 	}
 
