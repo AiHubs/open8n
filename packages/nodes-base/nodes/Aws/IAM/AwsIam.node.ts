@@ -1,7 +1,13 @@
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { user, group } from './descriptions';
+import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
 
 export class AwsIam implements INodeType {
@@ -23,7 +29,7 @@ export class AwsIam implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://iam.amazonaws.com',
+			baseURL: 'https://iam.amazonaws.com',
 			url: '',
 			json: true,
 			headers: {
@@ -47,6 +53,21 @@ export class AwsIam implements INodeType {
 						value: 'group',
 					},
 				],
+				routing: {
+					send: {
+						preSend: [
+							encodeBodyAsFormUrlEncoded,
+							// ToDo: Remove
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								console.log('requestOptions', requestOptions);
+								return requestOptions;
+							},
+						],
+					},
+				},
 			},
 			...user.description,
 			...group.description,

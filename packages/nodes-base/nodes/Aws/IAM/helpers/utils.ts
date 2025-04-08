@@ -1,146 +1,145 @@
-import {
-	type IHttpRequestOptions,
-	NodeApiError,
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type IN8nHttpFullResponse,
-	type INodeExecutionData,
+import type {
+	IHttpRequestOptions,
+	IDataObject,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { CURRENT_VERSION } from './constants';
 import type {
-	GetAllGroupsResponseBody,
-	GetAllUsersResponseBody,
-	GetGroupResponseBody,
-	GetUserResponseBody,
+	IGetAllGroupsResponseBody,
+	IGetAllUsersResponseBody,
+	IGetGroupResponseBody,
+	ITags,
+	IUser,
 } from './types';
 import { searchGroupsForUser } from '../methods/listSearch';
-import { makeAwsRequest } from '../transport';
+import { awsApiRequest } from '../transport';
 
-export async function presendStringifyBody(
+export async function encodeBodyAsFormUrlEncoded(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	if (requestOptions.body) {
-		requestOptions.body = JSON.stringify(requestOptions.body);
+		requestOptions.body = new URLSearchParams(
+			requestOptions.body as Record<string, string>,
+		).toString();
 	}
 	return requestOptions;
 }
 
-export async function searchUsersForGroup(
+async function findUsersForGroup(
 	this: IExecuteSingleFunctions,
 	groupName: string,
 ): Promise<IDataObject[]> {
-	if (!groupName) {
-		throw new NodeApiError(this.getNode(), {}, { message: 'Group is required to fetch users.' });
-	}
-
-	const responseData = (await makeAwsRequest.call(this, {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
-		url: `/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}`,
-	})) as GetGroupResponseBody;
-
-	const users = responseData?.GetGroupResponse?.GetGroupResult?.Users ?? [];
-
-	return users;
+		url: '',
+		body: new URLSearchParams({
+			Action: 'GetGroup',
+			Version: CURRENT_VERSION,
+			GroupName: groupName,
+		}).toString(),
+	};
+	const responseData = (await awsApiRequest.call(this, options)) as IGetGroupResponseBody;
+	return responseData?.GetGroupResponse?.GetGroupResult?.Users ?? [];
 }
 
-export async function processGroupsResponse(
+export async function simplifyGetGroupsResponse(
+	this: IExecuteSingleFunctions,
+	_: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const includeUsers = this.getNodeParameter('includeUsers', false);
+	const responseBody = response.body as IGetGroupResponseBody;
+	const groupData = responseBody.GetGroupResponse.GetGroupResult;
+	const group = groupData.Group;
+	return [
+		{ json: includeUsers ? { ...group, Users: groupData.Users ?? [] } : group },
+	] as INodeExecutionData[];
+}
+
+export async function simplifyGetAllGroupsResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const includeUsers = this.getNodeParameter('includeUsers', 0) as boolean;
-	const responseBody = response.body as GetGroupResponseBody | GetAllGroupsResponseBody;
-	const processedItems: INodeExecutionData[] = [];
+	const includeUsers = this.getNodeParameter('includeUsers', false);
+	const responseBody = response.body as IGetAllGroupsResponseBody;
+	const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
 
-	if ('GetGroupResponse' in responseBody) {
-		const groupData = responseBody.GetGroupResponse.GetGroupResult;
-		const group = groupData.Group;
-
-		return [{ json: includeUsers ? { ...group, Users: groupData.Users ?? [] } : group }];
+	if (groups.length === 0) {
+		return items;
 	}
 
-	if ('ListGroupsResponse' in responseBody) {
-		const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
+	if (!includeUsers) {
+		return groups.map((group) => ({ json: group })); // ToDo : Use n8n function
+	}
 
-		if (groups.length === 0) return items;
-
-		if (!includeUsers) {
-			return groups.map((group) => ({ json: group }));
-		}
-
-		for (const group of groups) {
-			const groupName = group.GroupName as string;
-			if (!groupName) continue;
-
-			const users = await searchUsersForGroup.call(this, groupName);
+	const processedItems: INodeExecutionData[] = [];
+	for (const group of groups) {
+		if (group.GroupName) {
+			// ToDo: Is this check needed? Isn't GroupName mandatory?
+			const users = await findUsersForGroup.call(this, group.GroupName as string); // ToDo: Use interface for IGroup where groups is defined
 			processedItems.push({ json: { ...group, Users: users } });
 		}
-
-		return processedItems;
 	}
-
-	return items;
+	return processedItems;
 }
 
-export async function processUsersResponse(
+export async function simplifyGetAllUsersResponse(
 	this: IExecuteSingleFunctions,
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	if (!response.body) return [];
-
-	const operation = this.getNodeParameter('operation');
-
-	if (operation === 'get') {
-		const user = (response.body as GetUserResponseBody)?.GetUserResponse?.GetUserResult?.User;
-		return user ? [{ json: user }] : [];
+	if (!response.body) {
+		return [];
 	}
-
-	if (operation === 'getAll') {
-		const users =
-			(response.body as GetAllUsersResponseBody)?.ListUsersResponse?.ListUsersResult?.Users ?? [];
-		return users.map((user) => ({ json: user }));
-	}
-
-	return [];
+	const users =
+		(response.body as IGetAllUsersResponseBody)?.ListUsersResponse?.ListUsersResult?.Users ?? [];
+	return users.map((user) => ({ json: user })); // ToDo: Use n8n function
 }
 
+// ToDo: Check if this can be optimized
 export async function deleteGroupMembers(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const groupName = (this.getNodeParameter('group') as IDataObject)?.value as string;
+	const groupName = this.getNodeParameter('group', undefined, { extractValue: true }) as string;
 
-	if (!groupName)
-		throw new NodeApiError(
-			this.getNode(),
-			{},
-			{
-				message: 'Group is required',
-				description: 'Please provide a value in Group field to delete a group.',
-			},
-		);
-
-	const users = await searchUsersForGroup.call(this, groupName);
-	if (!users.length) return requestOptions;
+	const users = await findUsersForGroup.call(this, groupName);
+	if (!users.length) {
+		return requestOptions;
+	}
 
 	await Promise.all(
 		users.map(async (user) => {
-			const userName = user.UserName;
-			if (!userName) return;
+			const userName = user.UserName as string;
+			if (!user.UserName) {
+				return;
+			}
+
 			try {
-				await makeAwsRequest.call(this, {
+				await awsApiRequest.call(this, {
 					method: 'POST',
-					url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=${CURRENT_VERSION}`,
+					url: '',
+					body: {
+						Action: 'RemoveUserFromGroup',
+						GroupName: groupName,
+						UserName: userName,
+						Version: CURRENT_VERSION,
+					},
 					ignoreHttpStatusErrors: true,
 				});
 			} catch (error) {
+				// ToDo: I think we shouldn't console log that? Should we throw an error?
 				console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
 			}
 		}),
 	);
+
 	return requestOptions;
 }
 
@@ -148,57 +147,20 @@ export async function validatePath(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const path = this.getNodeParameter('additionalFields.path', '') as string;
-	const newPath = this.getNodeParameter('additionalFields.newPath', '') as string;
-
-	const selectedPath = newPath || path;
-
-	if (selectedPath.length < 1 || selectedPath.length > 512) {
-		throw new NodeApiError(
+	const path = this.getNodeParameter('additionalFields.path') as string;
+	if (path.length < 1 || path.length > 512) {
+		throw new NodeOperationError(
 			this.getNode(),
-			{},
-			{
-				message: 'Invalid path length',
-				description: 'Path must be between 1 and 512 characters long.',
-			},
+			'The "Path" parameter must be between 1 and 512 characters long',
 		);
 	}
 
 	const validPathRegex = /^\/[\u0021-\u007E]*\/$/;
-
-	if (!validPathRegex.test(selectedPath) && selectedPath !== '/') {
-		throw new NodeApiError(
+	if (!validPathRegex.test(path) && path !== '/') {
+		throw new NodeOperationError(
 			this.getNode(),
-			{},
-			{
-				message: 'Invalid path format',
-				description: 'Ensure the path follows the pattern: /division_abc/subdivision_xyz/',
-			},
+			'Ensure the path follows the pattern: /division_abc/subdivision_xyz/',
 		);
-	}
-
-	return requestOptions;
-}
-
-export async function validateLimit(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const returnAll = this.getNodeParameter('returnAll') as boolean;
-
-	if (!returnAll) {
-		const limit = this.getNodeParameter('limit') as number;
-		if (!limit) {
-			throw new NodeApiError(
-				this.getNode(),
-				{},
-				{
-					message: 'Limit has no value provided',
-					description: 'Provide a "Limit" value or enable "Return All" to fetch all results.',
-				},
-			);
-		}
-		requestOptions.url += `&MaxItems=${limit}`;
 	}
 
 	return requestOptions;
@@ -210,52 +172,86 @@ export async function validateUserPath(
 ): Promise<IHttpRequestOptions> {
 	const prefix = this.getNodeParameter('additionalFields.pathPrefix') as string;
 
+	// ToDo: Is that the full validation? validatePath() uses a regex.
+	// If nothing else is needed why don't we correct for that when sending instead of validating?
 	if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
-		throw new NodeApiError(
+		throw new NodeOperationError(
 			this.getNode(),
-			{},
-			{
-				message: 'Invalid path prefix',
-				description: 'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-			},
+			'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
 		);
 	}
 
-	const responseData: IDataObject = await makeAwsRequest.call(this, {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
-		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}`,
-	});
+		url: '',
+		body: {
+			Action: 'ListUsers',
+			Version: CURRENT_VERSION,
+		},
+	};
+	const responseData = (await awsApiRequest.call(this, options)) as IGetAllUsersResponseBody;
 
-	const responseBody = responseData as GetAllUsersResponseBody;
-
-	const users = responseBody.ListUsersResponse.ListUsersResult.Users;
-
+	const users = responseData.ListUsersResponse.ListUsersResult.Users as IUser[];
 	if (!users || users.length === 0) {
-		throw new NodeApiError(
-			this.getNode(),
-			{},
-			{
-				message: 'No users found',
-				description: 'No users found in the group. Please try again.',
-			},
-		);
+		// ToDo: Should the error be '... Please adjust the "Path" parameter and try again.'?
+		throw new NodeOperationError(this.getNode(), 'No users found in the group. Please try again.');
 	}
 
-	const userPaths = users.map((user) => user.Path as string).filter(Boolean);
-
-	const isPathValid = userPaths.some((path) => path.startsWith(prefix));
-
+	const userPaths = users.map((user) => user.Path).filter(Boolean);
+	const isPathValid = userPaths.some((path) => path?.startsWith(prefix));
 	if (!isPathValid) {
-		throw new NodeApiError(
+		throw new NodeOperationError(
 			this.getNode(),
-			{},
-			{
-				message: 'Path does not exist',
-				description: `The "${prefix}" path was not found in your users - try entering a different path.`,
-			},
+			`The "${prefix}" path was not found in your users. Try entering a different path.`,
 		);
 	}
+	return requestOptions;
+}
 
+export async function validatePermissionsBoundary(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const permissionsBoundary = this.getNodeParameter(
+		'additionalFields.permissionsBoundary',
+	) as string;
+
+	if (permissionsBoundary) {
+		const arnPattern = /^arn:aws:iam::\d{12}:policy\/[\w\-+\/=._]+$/;
+
+		if (!arnPattern.test(permissionsBoundary)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The permissions boundary must be in ARN format, e.g., arn:aws:iam::123456789012:policy/ExamplePolicy',
+			);
+		}
+
+		if (requestOptions.body) {
+			// @ts-expect-error The if statement ensures that there is body
+			requestOptions.body.PermissionsBoundary = permissionsBoundary;
+		} else {
+			requestOptions.body = {
+				PermissionsBoundary: permissionsBoundary,
+			};
+		}
+	}
+	return requestOptions;
+}
+
+export async function preprocessTags(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const tagsData = this.getNodeParameter('additionalFields.tags') as ITags;
+	const tags = tagsData?.tags || [];
+
+	requestOptions.body ??= {};
+	tags.forEach((tag, index) => {
+		// @ts-expect-error The line above ensures that body is defined
+		requestOptions.body[`Tags.member.${index + 1}.Key`] = tag.key;
+		// @ts-expect-error The line above ensures that body is defined
+		requestOptions.body[`Tags.member.${index + 1}.Value`] = tag.value;
+	});
 	return requestOptions;
 }
 
@@ -263,17 +259,23 @@ export async function removeUserFromGroups(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const userName = (this.getNodeParameter('user') as IDataObject).value as string;
+	const userName = this.getNodeParameter('user', undefined, { extractValue: true });
 	const userGroups = await searchGroupsForUser.call(this);
 
 	for (const group of userGroups.results) {
-		const groupName = group.value;
-
-		await makeAwsRequest.call(this, {
+		await awsApiRequest.call(this, {
 			method: 'POST',
-			url: `/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}&UserName=${userName}`,
+			url: '',
+			body: {
+				Action: 'RemoveUserFromGroup',
+				Version: CURRENT_VERSION,
+				GroupName: group.value,
+				UserName: userName,
+			},
 		});
 	}
 
 	return requestOptions;
 }
+
+// ToDo: Do we need a handle pagination with a function? A function that wasn't used was removed.

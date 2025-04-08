@@ -1,53 +1,55 @@
 import type { IDataObject } from 'n8n-workflow';
 
-export type User = {
+// ToDo: Add IGroup
+
+export type IUser = {
 	Arn: string;
 	CreateDate: number;
 	PasswordLastUsed?: number;
 	Path?: string;
 	PermissionsBoundary?: string;
-	Tags: Array<{ Key: string; Value: string }>;
+	Tags: Array<{ Key: string; Value: string }>; // ToDo: Can this be ITags[]?
 	UserId: string;
 	UserName: string;
 };
 
-export type GetUserResponseBody = {
+export type IGetUserResponseBody = {
 	GetUserResponse: {
 		GetUserResult: {
-			User: IDataObject;
+			User: IDataObject; // ToDo: Can this be IUser?
 		};
 	};
 };
 
-export type GetGroupResponseBody = {
+export type IGetGroupResponseBody = {
 	GetGroupResponse: {
 		GetGroupResult: {
-			Group: IDataObject;
-			Users?: IDataObject[];
+			Group: IDataObject; // ToDo: Can this be IGroup[]?
+			Users?: IDataObject[]; // ToDo: Can this be IUser[]?
 		};
 	};
 };
 
-export type GetAllUsersResponseBody = {
+export type IGetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
-			Users: IDataObject[];
+			Users: IDataObject[]; // ToDo: Can this be IUser[]?
 			IsTruncated: boolean;
 			Marker: string;
 		};
 	};
 };
 
-export type GetAllGroupsResponseBody = {
+export type IGetAllGroupsResponseBody = {
 	ListGroupsResponse: {
 		ListGroupsResult: {
-			Groups: IDataObject[];
+			Groups: IDataObject[]; // ToDo: Can this be IGroup[]?
 			IsTruncated: boolean;
 			Marker: string;
 		};
 	};
 };
 
-export type Tags = {
-	tags: IDataObject[];
+export type ITags = {
+	tags: IDataObject[]; // ToDo: Should this be Array<{ Key: string; Value: string }>?
 };
