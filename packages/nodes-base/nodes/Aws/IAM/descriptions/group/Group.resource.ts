@@ -34,6 +34,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'CreateGroup',
 							Version: CURRENT_VERSION,
@@ -57,6 +58,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'DeleteGroup',
 							Version: CURRENT_VERSION,
@@ -98,6 +100,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'ListGroups',
 							Version: CURRENT_VERSION,
@@ -117,6 +120,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'UpdateGroup',
 							Version: CURRENT_VERSION,

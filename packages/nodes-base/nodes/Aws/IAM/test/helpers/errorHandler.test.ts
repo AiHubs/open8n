@@ -1,6 +1,7 @@
 import { NodeApiError } from 'n8n-workflow';
 import type { INodeExecutionData, IN8nHttpFullResponse, JsonObject } from 'n8n-workflow';
 
+import { ERROR_MESSAGES } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
 
 const mockExecuteSingleFunctions = {
@@ -36,7 +37,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'User "existingUserName" already exists',
-				description: 'Users must have unique names. Enter a different name for the new user.',
+				description: ERROR_MESSAGES.EntityAlreadyExists.User,
 			}),
 		);
 	});
@@ -54,7 +55,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrowError(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'User "nonExistentUser" does not exist',
-				description: 'The given user was not found - try entering a different user.',
+				description: ERROR_MESSAGES.NoSuchEntity.User,
 			}),
 		);
 	});
@@ -86,7 +87,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'Group "existingGroupName" already exists',
-				description: 'Groups must have unique names. Enter a different name for the new group.',
+				description: ERROR_MESSAGES.EntityAlreadyExists.Group,
 			}),
 		);
 	});
@@ -104,7 +105,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'Group "nonExistentGroup" does not exist',
-				description: 'The given group was not found - try entering a different group.',
+				description: ERROR_MESSAGES.NoSuchEntity.Group,
 			}),
 		);
 	});

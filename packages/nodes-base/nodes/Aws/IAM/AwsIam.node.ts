@@ -10,7 +10,7 @@ export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS IAM',
 		name: 'awsIam',
-		icon: 'file:iam.svg',
+		icon: 'file:AwsIam.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

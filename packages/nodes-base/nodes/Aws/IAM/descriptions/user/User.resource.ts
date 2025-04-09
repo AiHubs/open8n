@@ -32,6 +32,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'AddUserToGroup',
 							Version: CURRENT_VERSION,
@@ -53,6 +54,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'CreateUser',
 							Version: CURRENT_VERSION,
@@ -76,6 +78,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'DeleteUser',
 							Version: CURRENT_VERSION,
@@ -96,6 +99,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'GetUser',
 							Version: CURRENT_VERSION,
@@ -123,6 +127,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'ListUsers',
 							Version: CURRENT_VERSION,
@@ -143,6 +148,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'RemoveUserFromGroup',
 							Version: CURRENT_VERSION,
@@ -164,6 +170,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						url: '',
 						body: {
 							Action: 'UpdateUser',
 							Version: CURRENT_VERSION,

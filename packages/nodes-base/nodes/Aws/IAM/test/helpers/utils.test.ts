@@ -24,6 +24,9 @@ describe('AWS IAM - Helper Functions', () => {
 		mockNode = {
 			getNodeParameter: jest.fn(),
 			getNode: jest.fn(),
+			helpers: {
+				returnJsonArray: jest.fn((input: unknown[]) => input.map((i) => ({ json: i }))),
+			},
 		};
 	});
 

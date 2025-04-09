@@ -7,35 +7,36 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { ERROR_MESSAGES } from './constants';
 import type { AwsError, ErrorMessage } from './types';
 
 function mapErrorToResponse(errorCode: string, errorMessage: string): ErrorMessage | undefined {
 	if (errorCode === 'EntityAlreadyExists') {
-		if (errorMessage.includes('User')) {
+		if (errorMessage.includes('user') || errorMessage.includes('User')) {
 			return {
 				message: errorMessage,
-				description: 'Users must have unique names. Enter a different name for the new user.',
+				description: ERROR_MESSAGES.EntityAlreadyExists.User,
 			};
 		}
-		if (errorMessage.includes('Group')) {
+		if (errorMessage.includes('group') || errorMessage.includes('Group')) {
 			return {
 				message: errorMessage,
-				description: 'Groups must have unique names. Enter a different name for the new group.',
+				description: ERROR_MESSAGES.EntityAlreadyExists.Group,
 			};
 		}
 	}
 
 	if (errorCode === 'NoSuchEntity') {
-		if (errorMessage.includes('User')) {
+		if (errorMessage.includes('user') || errorMessage.includes('User')) {
 			return {
 				message: errorMessage,
-				description: 'The given user was not found - try entering a different user.',
+				description: ERROR_MESSAGES.NoSuchEntity.User,
 			};
 		}
-		if (errorMessage.includes('Group')) {
+		if (errorMessage.includes('group') || errorMessage.includes('Group')) {
 			return {
 				message: errorMessage,
-				description: 'The given group was not found - try entering a different group.',
+				description: ERROR_MESSAGES.NoSuchEntity.Group,
 			};
 		}
 	}
@@ -43,7 +44,7 @@ function mapErrorToResponse(errorCode: string, errorMessage: string): ErrorMessa
 	if (errorCode === 'DeleteConflict') {
 		return {
 			message: errorMessage,
-			description: 'Cannot delete entity, please remove users from group first.',
+			description: ERROR_MESSAGES.DeleteConflict.Default,
 		};
 	}
 
