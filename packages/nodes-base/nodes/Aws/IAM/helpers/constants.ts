@@ -1,6 +1,6 @@
 export const CURRENT_VERSION = '2010-05-08';
 export const BASE_URL = 'https://iam.amazonaws.com';
-export const ERROR_MESSAGES = {
+export const ERROR_DESCRIPTIONS = {
 	EntityAlreadyExists: {
 		User: 'Users must have unique names. Enter a different name for the new user.',
 		Group: 'Groups must have unique names. Enter a different name for the new group.',

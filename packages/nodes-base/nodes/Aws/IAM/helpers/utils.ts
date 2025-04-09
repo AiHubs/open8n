@@ -78,12 +78,12 @@ export async function simplifyGetAllGroupsResponse(
 		return this.helpers.returnJsonArray(groups);
 	}
 
-	const processedItems: INodeExecutionData[] = [];
+	const processedItems: IDataObject[] = [];
 	for (const group of groups) {
 		const users = await findUsersForGroup.call(this, group.GroupName);
-		processedItems.push({ json: { ...group, Users: users } });
+		processedItems.push({ ...group, Users: users });
 	}
-	return processedItems;
+	return this.helpers.returnJsonArray(processedItems);
 }
 
 export async function simplifyGetAllUsersResponse(
@@ -219,18 +219,19 @@ export async function validateName(
 
 	const nameParam = resource === 'user' ? 'userName' : 'groupName';
 	const name = this.getNodeParameter(nameParam) as string;
+	const capitalizedResource = resource.replace(/^./, (c) => c.toUpperCase());
 
 	if (/\s/.test(name)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name must not contain spaces.`,
+			`${capitalizedResource} name must not contain spaces.`,
 		);
 	}
 
 	if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name may only contain letters, numbers, hyphens, and underscores.`,
+			`${capitalizedResource} name may only contain letters, numbers, hyphens, and underscores.`,
 		);
 	}
 
