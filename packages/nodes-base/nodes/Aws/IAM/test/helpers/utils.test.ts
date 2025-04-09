@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { IHttpRequestOptions, NodeOperationError } from 'n8n-workflow';
 
 import {
 	preprocessTags,
@@ -10,6 +10,7 @@ import {
 	simplifyGetGroupsResponse,
 	simplifyGetAllGroupsResponse,
 	simplifyGetAllUsersResponse,
+	validateName,
 } from '../../helpers/utils';
 import { awsApiRequest } from '../../transport';
 
@@ -144,6 +145,84 @@ describe('AWS IAM - Helper Functions', () => {
 
 			const result = await validateUserPath.call(mockNode, requestOptions);
 			expect(result.body).toHaveProperty('PathPrefix', '/validPrefix/');
+		});
+	});
+
+	describe('validateName function', () => {
+		const requestOptions: IHttpRequestOptions = { body: {}, url: '' };
+
+		it('should throw an error if userName contains spaces', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'user';
+				if (param === 'userName') return 'John Doe';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+				new NodeOperationError(mockNode.getNode(), 'User name must not contain spaces.'),
+			);
+		});
+
+		it('should throw an error if userName contains invalid characters', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'user';
+				if (param === 'userName') return 'John@Doe';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+				new NodeOperationError(
+					mockNode.getNode(),
+					'User name may only contain letters, numbers, hyphens, and underscores.',
+				),
+			);
+		});
+
+		it('should pass validation for valid userName', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'user';
+				if (param === 'userName') return 'John_Doe123';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).resolves.toEqual(requestOptions);
+		});
+
+		it('should throw an error if groupName contains spaces', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'group';
+				if (param === 'groupName') return 'Group Name';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+				new NodeOperationError(mockNode.getNode(), 'Group name must not contain spaces.'),
+			);
+		});
+
+		it('should throw an error if groupName contains invalid characters', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'group';
+				if (param === 'groupName') return 'Group@Name';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
+				new NodeOperationError(
+					mockNode.getNode(),
+					'Group name may only contain letters, numbers, hyphens, and underscores.',
+				),
+			);
+		});
+
+		it('should pass validation for valid groupName', async () => {
+			mockNode.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'resource') return 'group';
+				if (param === 'groupName') return 'Group_Name-123';
+				return '';
+			});
+
+			await expect(validateName.call(mockNode, requestOptions)).resolves.toEqual(requestOptions);
 		});
 	});
 

@@ -1,4 +1,5 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { type INodeProperties } from 'n8n-workflow';
+import { validateName } from '../helpers/utils';
 
 export const paginationParameters: INodeProperties[] = [
 	{
@@ -129,6 +130,11 @@ export const groupNameParameter: INodeProperties = {
 	},
 	default: '',
 	placeholder: 'e.g. GroupName',
+	routing: {
+		send: {
+			preSend: [validateName],
+		},
+	},
 };
 
 export const userNameParameter: INodeProperties = {
@@ -142,5 +148,10 @@ export const userNameParameter: INodeProperties = {
 	typeOptions: {
 		maxLength: 64,
 		regex: '^[A-Za-z0-9+=,\\.@_-]+$',
+	},
+	routing: {
+		send: {
+			preSend: [validateName],
+		},
 	},
 };

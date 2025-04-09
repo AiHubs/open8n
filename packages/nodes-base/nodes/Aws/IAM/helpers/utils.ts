@@ -211,6 +211,32 @@ export async function validateUserPath(
 	return requestOptions;
 }
 
+export async function validateName(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const resource = this.getNodeParameter('resource') as string;
+
+	const nameParam = resource === 'user' ? 'userName' : 'groupName';
+	const name = this.getNodeParameter(nameParam) as string;
+
+	if (/\s/.test(name)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name must not contain spaces.`,
+		);
+	}
+
+	if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name may only contain letters, numbers, hyphens, and underscores.`,
+		);
+	}
+
+	return requestOptions;
+}
+
 export async function validatePermissionsBoundary(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
