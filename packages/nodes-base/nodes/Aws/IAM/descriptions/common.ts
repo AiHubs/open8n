@@ -1,4 +1,5 @@
 import { type INodeProperties } from 'n8n-workflow';
+
 import { validateName } from '../helpers/utils';
 
 export const paginationParameters: INodeProperties[] = [
