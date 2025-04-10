@@ -90,6 +90,38 @@ describe('AWS IAM - Helper Functions', () => {
 				'Tags.member.1.Key=Department&Tags.member.1.Value=Engineering&Tags.member.2.Key=Role&Tags.member.2.Value=Developer',
 			);
 		});
+
+		it('should throw error if a tag is missing a key', async () => {
+			mockNode.getNodeParameter.mockReturnValue({
+				tags: [{ key: '', value: 'Engineering' }],
+			});
+
+			const requestOptions = { body: '', headers: {}, url: '' };
+
+			await expect(preprocessTags.call(mockNode, requestOptions)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(preprocessTags.call(mockNode, requestOptions)).rejects.toThrow(
+				"Tag at position 1 is missing 'Key'. Both 'Key' and 'Value' are required.",
+			);
+		});
+
+		it('should throw error if a tag is missing a value', async () => {
+			mockNode.getNodeParameter.mockReturnValue({
+				tags: [{ key: 'Department', value: '' }],
+			});
+
+			const requestOptions = { body: '', headers: {}, url: '' };
+
+			await expect(preprocessTags.call(mockNode, requestOptions)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(preprocessTags.call(mockNode, requestOptions)).rejects.toThrow(
+				"Tag at position 1 is missing 'Value'. Both 'Key' and 'Value' are required.",
+			);
+		});
 	});
 
 	describe('deleteGroupMembers', () => {

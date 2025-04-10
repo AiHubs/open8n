@@ -286,6 +286,12 @@ export async function preprocessTags(
 	}
 
 	tags.forEach((tag, index) => {
+		if (!tag.key || !tag.value) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Tag at position ${index + 1} is missing '${!tag.key ? 'Key' : 'Value'}'. Both 'Key' and 'Value' are required.`,
+			);
+		}
 		bodyObj[`Tags.member.${index + 1}.Key`] = tag.key;
 		bodyObj[`Tags.member.${index + 1}.Value`] = tag.value;
 	});
