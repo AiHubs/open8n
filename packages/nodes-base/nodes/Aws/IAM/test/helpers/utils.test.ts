@@ -12,6 +12,8 @@ import {
 	simplifyGetAllGroupsResponse,
 	simplifyGetAllUsersResponse,
 	validateName,
+	validatePermissionsBoundary,
+	encodeBodyAsFormUrlEncoded,
 } from '../../helpers/utils';
 import { awsApiRequest } from '../../transport';
 
@@ -30,6 +32,33 @@ describe('AWS IAM - Helper Functions', () => {
 				returnJsonArray: jest.fn((input: unknown[]) => input.map((i) => ({ json: i }))),
 			},
 		};
+	});
+
+	describe('encodeBodyAsFormUrlEncoded', () => {
+		it('should encode the body as application/x-www-form-urlencoded', async () => {
+			const requestOptions: IHttpRequestOptions = {
+				body: {
+					client_id: 'myClient',
+					client_secret: 'mySecret',
+					grant_type: 'client_credentials',
+				},
+				url: '',
+				headers: {},
+			};
+
+			const result = await encodeBodyAsFormUrlEncoded.call(mockNode, requestOptions);
+
+			expect(result.body).toBe(
+				'client_id=myClient&client_secret=mySecret&grant_type=client_credentials',
+			);
+		});
+
+		it('should return unchanged options if no body is present', async () => {
+			const requestOptions: IHttpRequestOptions = { url: '', headers: {} };
+			const result = await encodeBodyAsFormUrlEncoded.call(mockNode, requestOptions);
+
+			expect(result).toEqual({ url: '', headers: {} });
+		});
 	});
 
 	describe('findUsersForGroup', () => {
@@ -149,7 +178,7 @@ describe('AWS IAM - Helper Functions', () => {
 		});
 	});
 
-	describe('validateName function', () => {
+	describe('validateName', () => {
 		const requestOptions: IHttpRequestOptions = { body: {}, url: '' };
 
 		it('should throw an error if userName contains spaces', async () => {
@@ -160,7 +189,7 @@ describe('AWS IAM - Helper Functions', () => {
 			});
 
 			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(mockNode.getNode(), 'User name must not contain spaces.'),
+				new NodeOperationError(mockNode.getNode(), 'User name should not contain spaces.'),
 			);
 		});
 
@@ -174,7 +203,7 @@ describe('AWS IAM - Helper Functions', () => {
 			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
 				new NodeOperationError(
 					mockNode.getNode(),
-					'User name may only contain letters, numbers, hyphens, and underscores.',
+					'User name can have up to 64 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
 				),
 			);
 		});
@@ -197,7 +226,7 @@ describe('AWS IAM - Helper Functions', () => {
 			});
 
 			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(mockNode.getNode(), 'Group name must not contain spaces.'),
+				new NodeOperationError(mockNode.getNode(), 'Group name should not contain spaces.'),
 			);
 		});
 
@@ -211,7 +240,7 @@ describe('AWS IAM - Helper Functions', () => {
 			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
 				new NodeOperationError(
 					mockNode.getNode(),
-					'Group name may only contain letters, numbers, hyphens, and underscores.',
+					'Group name can have up to 128 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
 				),
 			);
 		});
@@ -224,6 +253,36 @@ describe('AWS IAM - Helper Functions', () => {
 			});
 
 			await expect(validateName.call(mockNode, requestOptions)).resolves.toEqual(requestOptions);
+		});
+	});
+
+	describe('validatePermissionsBoundary', () => {
+		const requestOptions: IHttpRequestOptions = { body: {}, url: '' };
+
+		it('should return the request options unchanged if no permissions boundary is set', async () => {
+			mockNode.getNodeParameter.mockReturnValue(undefined);
+
+			const result = await validatePermissionsBoundary.call(mockNode, requestOptions);
+
+			expect(result).toEqual(requestOptions);
+		});
+
+		it('should add a valid permissions boundary to the request body', async () => {
+			const validArn = 'arn:aws:iam::123456789012:policy/ExamplePolicy';
+			mockNode.getNodeParameter.mockReturnValue(validArn);
+
+			const result = await validatePermissionsBoundary.call(mockNode, requestOptions);
+
+			expect(result.body).toEqual({ PermissionsBoundary: validArn });
+		});
+
+		it('should throw an error for invalid permissions boundary format', async () => {
+			const invalidArn = 'invalid:arn:format';
+			mockNode.getNodeParameter.mockReturnValue(invalidArn);
+
+			await expect(
+				validatePermissionsBoundary.call(mockNode, { body: {}, url: '', headers: {} }),
+			).rejects.toThrow(NodeOperationError);
 		});
 	});
 

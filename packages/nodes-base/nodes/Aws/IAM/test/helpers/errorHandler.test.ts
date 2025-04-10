@@ -1,7 +1,7 @@
 import { NodeApiError } from 'n8n-workflow';
 import type { INodeExecutionData, IN8nHttpFullResponse, JsonObject } from 'n8n-workflow';
 
-import { ERROR_MESSAGES } from '../../helpers/constants';
+import { ERROR_DESCRIPTIONS } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
 
 const mockExecuteSingleFunctions = {
@@ -37,7 +37,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'User "existingUserName" already exists',
-				description: ERROR_MESSAGES.EntityAlreadyExists.User,
+				description: ERROR_DESCRIPTIONS.EntityAlreadyExists.User,
 			}),
 		);
 	});
@@ -55,7 +55,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrowError(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'User "nonExistentUser" does not exist',
-				description: ERROR_MESSAGES.NoSuchEntity.User,
+				description: ERROR_DESCRIPTIONS.NoSuchEntity.User,
 			}),
 		);
 	});
@@ -87,7 +87,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'Group "existingGroupName" already exists',
-				description: ERROR_MESSAGES.EntityAlreadyExists.Group,
+				description: ERROR_DESCRIPTIONS.EntityAlreadyExists.Group,
 			}),
 		);
 	});
@@ -105,7 +105,7 @@ describe('handleError', () => {
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
 				message: 'Group "nonExistentGroup" does not exist',
-				description: ERROR_MESSAGES.NoSuchEntity.Group,
+				description: ERROR_DESCRIPTIONS.NoSuchEntity.Group,
 			}),
 		);
 	});
