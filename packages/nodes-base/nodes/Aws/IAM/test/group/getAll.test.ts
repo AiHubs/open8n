@@ -28,6 +28,7 @@ describe('AWS IAM -  Get All Groups', () => {
 			.post('/', {
 				Action: 'ListGroups',
 				Version: CURRENT_VERSION,
+				MaxItems: 100,
 			})
 			.reply(200, {
 				ListGroupsResponse: {

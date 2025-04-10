@@ -1,4 +1,4 @@
-import { type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { validateName } from '../helpers/utils';
 
@@ -13,7 +13,7 @@ export const paginationParameters: INodeProperties[] = [
 	{
 		displayName: 'Limit',
 		name: 'limit',
-		default: 50,
+		default: 100,
 		type: 'number',
 		validateType: 'number',
 		typeOptions: {
@@ -28,7 +28,7 @@ export const paginationParameters: INodeProperties[] = [
 		routing: {
 			send: {
 				property: 'MaxItems',
-				type: 'query',
+				type: 'body',
 				value: '={{ $value }}',
 			},
 		},

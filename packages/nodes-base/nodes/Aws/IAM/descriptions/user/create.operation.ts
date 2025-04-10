@@ -8,6 +8,7 @@ const properties: INodeProperties[] = [
 	{
 		...userNameParameter,
 		description: 'The username of the new user to create',
+		placeholder: 'e.g. UserName',
 	},
 	{
 		displayName: 'Additional Fields',

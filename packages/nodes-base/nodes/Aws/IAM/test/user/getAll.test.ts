@@ -28,6 +28,7 @@ describe('AWS IAM - Get All Users', () => {
 			.post('/', {
 				Action: 'ListUsers',
 				Version: CURRENT_VERSION,
+				MaxItems: 100,
 			})
 			.reply(200, {
 				ListUsersResponse: {

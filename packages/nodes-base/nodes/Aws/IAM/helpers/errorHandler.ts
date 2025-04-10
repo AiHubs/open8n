@@ -7,45 +7,49 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { ERROR_MESSAGES } from './constants';
+import { ERROR_DESCRIPTIONS } from './constants';
 import type { AwsError, ErrorMessage } from './types';
 
 function mapErrorToResponse(errorCode: string, errorMessage: string): ErrorMessage | undefined {
-	if (errorCode === 'EntityAlreadyExists') {
-		if (errorMessage.includes('user') || errorMessage.includes('User')) {
-			return {
-				message: errorMessage,
-				description: ERROR_MESSAGES.EntityAlreadyExists.User,
-			};
-		}
-		if (errorMessage.includes('group') || errorMessage.includes('Group')) {
-			return {
-				message: errorMessage,
-				description: ERROR_MESSAGES.EntityAlreadyExists.Group,
-			};
-		}
-	}
+	const isUser = /user/i.test(errorMessage);
+	const isGroup = /group/i.test(errorMessage);
 
-	if (errorCode === 'NoSuchEntity') {
-		if (errorMessage.includes('user') || errorMessage.includes('User')) {
-			return {
-				message: errorMessage,
-				description: ERROR_MESSAGES.NoSuchEntity.User,
-			};
-		}
-		if (errorMessage.includes('group') || errorMessage.includes('Group')) {
-			return {
-				message: errorMessage,
-				description: ERROR_MESSAGES.NoSuchEntity.Group,
-			};
-		}
-	}
+	switch (errorCode) {
+		case 'EntityAlreadyExists':
+			if (isUser) {
+				return {
+					message: errorMessage,
+					description: ERROR_DESCRIPTIONS.EntityAlreadyExists.User,
+				};
+			}
+			if (isGroup) {
+				return {
+					message: errorMessage,
+					description: ERROR_DESCRIPTIONS.EntityAlreadyExists.Group,
+				};
+			}
+			break;
 
-	if (errorCode === 'DeleteConflict') {
-		return {
-			message: errorMessage,
-			description: ERROR_MESSAGES.DeleteConflict.Default,
-		};
+		case 'NoSuchEntity':
+			if (isUser) {
+				return {
+					message: errorMessage,
+					description: ERROR_DESCRIPTIONS.NoSuchEntity.User,
+				};
+			}
+			if (isGroup) {
+				return {
+					message: errorMessage,
+					description: ERROR_DESCRIPTIONS.NoSuchEntity.Group,
+				};
+			}
+			break;
+
+		case 'DeleteConflict':
+			return {
+				message: errorMessage,
+				description: ERROR_DESCRIPTIONS.DeleteConflict.Default,
+			};
 	}
 
 	return undefined;

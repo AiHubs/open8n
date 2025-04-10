@@ -78,12 +78,12 @@ export async function simplifyGetAllGroupsResponse(
 		return this.helpers.returnJsonArray(groups);
 	}
 
-	const processedItems: INodeExecutionData[] = [];
+	const processedItems: IDataObject[] = [];
 	for (const group of groups) {
 		const users = await findUsersForGroup.call(this, group.GroupName);
-		processedItems.push({ json: { ...group, Users: users } });
+		processedItems.push({ ...group, Users: users });
 	}
-	return processedItems;
+	return this.helpers.returnJsonArray(processedItems);
 }
 
 export async function simplifyGetAllUsersResponse(
@@ -156,7 +156,7 @@ export async function validatePath(
 	if (!validPathRegex.test(path) && path !== '/') {
 		throw new NodeOperationError(
 			this.getNode(),
-			"Ensure the path follows the pattern: starts and ends with '/' e.g. /division_abc/subdivision_xyz/.",
+			'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
 		);
 	}
 
@@ -216,21 +216,26 @@ export async function validateName(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const resource = this.getNodeParameter('resource') as string;
-
 	const nameParam = resource === 'user' ? 'userName' : 'groupName';
 	const name = this.getNodeParameter(nameParam) as string;
+
+	const maxLength = resource === 'user' ? 64 : 128;
+	const capitalizedResource = resource.replace(/^./, (c) => c.toUpperCase());
+	const validNamePattern = /^[a-zA-Z0-9-_]+$/;
+
+	const isInvalid = !validNamePattern.test(name) || name.length > maxLength;
 
 	if (/\s/.test(name)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name must not contain spaces.`,
+			`${capitalizedResource} name should not contain spaces.`,
 		);
 	}
 
-	if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
+	if (isInvalid) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`${resource.charAt(0).toUpperCase() + resource.slice(1)} name may only contain letters, numbers, hyphens, and underscores.`,
+			`${capitalizedResource} name can have up to ${maxLength} characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).`,
 		);
 	}
 
@@ -251,7 +256,7 @@ export async function validatePermissionsBoundary(
 		if (!arnPattern.test(permissionsBoundary)) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'The permissions boundary must be in ARN format, e.g., arn:aws:iam::123456789012:policy/ExamplePolicy.',
+				'Permissions boundaries must be provided in ARN format (e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy). These can be found at the top of the permissions boundary detail page in the IAM dashboard.',
 			);
 		}
 

@@ -8,6 +8,7 @@ const properties: INodeProperties[] = [
 	{
 		...groupNameParameter,
 		description: 'The name of the new group to create',
+		placeholder: 'e.g. GroupName',
 	},
 	{
 		displayName: 'Additional Fields',
