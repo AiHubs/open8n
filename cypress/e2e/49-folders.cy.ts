@@ -32,6 +32,7 @@ import {
 	getPersonalProjectMenuItem,
 	getProjectEmptyState,
 	getProjectMenuItem,
+	getProjectTab,
 	getVisibleListBreadcrumbs,
 	getWorkflowCard,
 	getWorkflowCardBreadcrumbs,
@@ -64,12 +65,16 @@ describe('Folders', () => {
 
 	describe('Create and navigate folders', () => {
 		it('should create folder from the project header', () => {
+			// 1. In project root
 			getPersonalProjectMenuItem().click();
 			createFolderFromProjectHeader('My Folder');
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
 			successToast().find('a').click();
 			getCurrentBreadcrumb().should('contain.text', 'My Folder');
+			// 2. In a folder
+			createFolderFromListHeaderButton('My Folder 2');
+			getFolderCard('My Folder 2').should('exist');
 		});
 
 		it('should not allow illegal folder names', () => {
@@ -217,6 +222,10 @@ describe('Folders', () => {
 			cy.getByTestId('action-folder').should('exist');
 			createFolderFromProjectHeader('Personal Folder');
 			getFolderCards().should('exist');
+			// Create folder option should not be available on credentials tab
+			getProjectTab('ProjectsCredentials').click();
+			getAddResourceDropdown().click();
+			cy.getByTestId('action-folder').should('not.exist');
 		});
 	});
 
@@ -481,9 +490,9 @@ describe('Folders', () => {
 		});
 	});
 
-	describe('Workflow card breadcrumbs', () => {
-		it('should correctly show workflow card breadcrumbs', () => {
-			createNewProject('Test workflow breadcrumbs', { openAfterCreate: true });
+	describe('Card breadcrumbs', () => {
+		it('should correctly show workflow card breadcrumbs in overview page', () => {
+			createNewProject('Test card breadcrumbs', { openAfterCreate: true });
 			createFolderFromProjectHeader('Parent Folder');
 			createFolderInsideFolder('Child Folder', 'Parent Folder');
 			getFolderCard('Child Folder').click();
@@ -499,8 +508,31 @@ describe('Folders', () => {
 			cy.get('[role=tooltip]').should('exist');
 			cy.get('[role=tooltip]').should(
 				'contain.text',
-				'est workflow breadcrumbs / Parent Folder / Child Folder / Child Folder 2',
+				'Test card breadcrumbs / Parent Folder / Child Folder / Child Folder 2',
 			);
+		});
+
+		it('should correctly toggle folder and workflow card breadcrumbs in projects and folders', () => {
+			createNewProject('Test nested search', { openAfterCreate: true });
+			createFolderFromProjectHeader('Parent Folder');
+			getFolderCard('Parent Folder').click();
+			createWorkflowFromEmptyState('Child - Workflow');
+			getProjectMenuItem('Test nested search').click();
+			createFolderInsideFolder('Child Folder', 'Parent Folder');
+			// Should not show breadcrumbs in the folder if there is no search term
+			cy.getByTestId('card-badge').should('not.exist');
+			// Back to project root
+			getHomeProjectBreadcrumb().click();
+			// Should not show breadcrumbs in the project if there is no search term
+			cy.getByTestId('card-badge').should('not.exist');
+			// Search for something
+			cy.getByTestId('resources-list-search').type('child', { delay: 20 });
+			// Both folder and workflow from child folder should be in the results - nested search works
+			getFolderCards().should('have.length', 1);
+			getWorkflowCards().should('have.length', 1);
+			// Card badges with breadcrumbs should be shown
+			getFolderCard('Child Folder').findChildByTestId('card-badge').should('exist');
+			getWorkflowCard('Child - Workflow').findChildByTestId('card-badge').should('exist');
 		});
 	});
 });

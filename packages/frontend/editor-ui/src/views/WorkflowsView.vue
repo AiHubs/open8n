@@ -64,6 +64,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -131,6 +132,8 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
+
+const showCardsBadge = ref(false);
 
 /**
  * Folder actions
@@ -327,9 +330,14 @@ const hasFilters = computed(() => {
 	);
 });
 
-const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+const isSelfHostedDeployment = computed(() => settingsStore.deploymentType === 'default');
+
 const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+);
+
+const showRegisteredCommunityCTA = computed(
+	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
 );
 
 /**
@@ -347,6 +355,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		filters.value.search = '';
 		await fetchWorkflows();
 	},
 );
@@ -473,7 +482,9 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
+				parentFolderId:
+					parentFolder ??
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
@@ -494,6 +505,10 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Toggle ownership cards visibility only after we have fetched the workflows
+		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+
 		return fetchedResources;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
@@ -1042,8 +1057,8 @@ const renameFolder = async (folderId: string) => {
 };
 
 const createFolderInCurrent = async () => {
-	// Show the community plus enrollment modal if the user is in a community plan
-	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+	// Show the community plus enrollment modal if the user is self-hosted, and hasn't enabled folders
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
@@ -1125,7 +1140,7 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 }) => {
-	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
@@ -1220,19 +1235,19 @@ const onCreateWorkflowClick = () => {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage"
+					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.summary.isLoading"
 					:summary="insightsStore.summary.state"
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled" #add-button>
+		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
 				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
 			>
 				<template #content>
-					<span v-if="isOverviewPage">
+					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1240,7 +1255,7 @@ const onCreateWorkflowClick = () => {
 							{{ i18n.baseText('folders.add.overview.community.message') }}
 						</span>
 					</span>
-					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+					<span v-else>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {
@@ -1256,7 +1271,7 @@ const onCreateWorkflowClick = () => {
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
+					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
@@ -1307,22 +1322,27 @@ const onCreateWorkflowClick = () => {
 				/>
 			</div>
 		</template>
-		<template #item="{ item: data }">
+		<template #item="{ item: data, index }">
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+				:key="`folder-${index}`"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
+				:personal-project="projectsStore.personalProject"
+				:show-ownership-badge="showCardsBadge"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
+				:key="`workflow-${index}`"
 				data-test-id="resources-list-item-workflow"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
+				:show-ownership-badge="showCardsBadge"
 				@click:tag="onClickTag"
 				@workflow:deleted="onWorkflowDeleted"
 				@workflow:moved="fetchWorkflows"

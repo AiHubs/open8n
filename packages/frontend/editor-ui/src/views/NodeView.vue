@@ -64,6 +64,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	AI_CREDITS_EXPERIMENT,
+	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -114,6 +115,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 defineOptions({
 	name: 'NodeView',
@@ -273,7 +275,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
+const isLogsPanelOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
 
 /**
  * Initialization
@@ -1286,8 +1288,8 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
-async function onOpenChat() {
-	await toggleChatOpen('main');
+async function onOpenChat(isOpen?: boolean) {
+	await toggleChatOpen('main', isOpen);
 }
 
 /**
@@ -1680,6 +1682,11 @@ onMounted(() => {
 				// Once view is initialized, pick up all toast notifications
 				// waiting in the store and display them
 				toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+
+				if (route.query.settings) {
+					uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+					void router.replace({ query: { settings: undefined } });
+				}
 			})
 			.finally(() => {
 				isLoading.value = false;
@@ -1787,9 +1794,9 @@ onBeforeUnmount(() => {
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
-				:type="isChatOpen ? 'tertiary' : 'primary'"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click="onOpenChat"
+				:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
+				:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+				@click="onOpenChat(!isLogsPanelOpen)"
 			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
