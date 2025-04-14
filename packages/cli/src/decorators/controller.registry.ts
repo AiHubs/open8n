@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
-import { ApplicationError } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
+import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
@@ -11,7 +11,7 @@ import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
@@ -73,7 +73,7 @@ export class ControllerRegistry {
 			.replace(/\/$/, '');
 		app.use(prefix, router);
 
-		const controller = Container.get<Controller>(controllerClass);
+		const controller = Container.get(controllerClass) as Controller;
 		const controllerMiddlewares = metadata.middlewares.map(
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);
@@ -93,14 +93,14 @@ export class ControllerRegistry {
 					if (arg.type === 'param') args.push(req.params[arg.key]);
 					else if (['body', 'query'].includes(arg.type)) {
 						const paramType = argTypes[index] as ZodClass;
-						if (paramType && 'parse' in paramType) {
+						if (paramType && 'safeParse' in paramType) {
 							const output = paramType.safeParse(req[arg.type]);
 							if (output.success) args.push(output.data);
 							else {
 								return res.status(400).json(output.error.errors[0]);
 							}
 						}
-					} else throw new ApplicationError('Unknown arg type: ' + arg.type);
+					} else throw new UnexpectedError('Unknown arg type: ' + arg.type);
 				}
 				return await controller[handlerName](...args);
 			};
@@ -116,7 +116,13 @@ export class ControllerRegistry {
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
-				route.usesTemplates ? handler : send(handler),
+				route.usesTemplates
+					? async (req, res) => {
+							// When using templates, intentionally drop the return value,
+							// since template rendering writes directly to the response.
+							await handler(req, res);
+						}
+					: send(handler),
 			);
 		}
 	}
@@ -133,11 +139,10 @@ export class ControllerRegistry {
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
 		return (_req, res, next) => {
 			if (!this.license.isFeatureEnabled(feature)) {
-				return res
-					.status(403)
-					.json({ status: 'error', message: 'Plan lacks license for this feature' });
+				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
+				return;
 			}
-			return next();
+			next();
 		};
 	}
 
@@ -152,13 +157,14 @@ export class ControllerRegistry {
 			const { scope, globalOnly } = accessScope;
 
 			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
-				return res.status(403).json({
+				res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 				});
+				return;
 			}
 
-			return next();
+			next();
 		};
 	}
 }

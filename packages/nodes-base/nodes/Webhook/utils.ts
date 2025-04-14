@@ -1,14 +1,15 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import basicAuth from 'basic-auth';
+import jwt from 'jsonwebtoken';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
 	IDataObject,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import basicAuth from 'basic-auth';
-import jwt from 'jsonwebtoken';
-import { formatPrivateKey } from '../../utils/utilities';
+
 import { WebhookAuthorizationError } from './error';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
 	httpMethod: string | string[];
@@ -59,19 +60,19 @@ export const getResponseData = (parameters: WebhookParameters) => {
 };
 
 export const configuredOutputs = (parameters: WebhookParameters) => {
-	const httpMethod = parameters.httpMethod as string | string[];
+	const httpMethod = parameters.httpMethod;
 
 	if (!Array.isArray(httpMethod))
 		return [
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: httpMethod,
 			},
 		];
 
 	const outputs = httpMethod.map((method) => {
 		return {
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: method,
 		};
 	});
@@ -205,6 +206,20 @@ export async function validateWebhookAuthentication(
 
 		if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
 			// Provided authentication data is wrong
+			throw new WebhookAuthorizationError(403);
+		}
+	} else if (authentication === 'bearerAuth') {
+		let expectedAuth: ICredentialDataDecryptedObject | undefined;
+		try {
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBearerAuth');
+		} catch {}
+
+		const expectedToken = expectedAuth?.token as string;
+		if (!expectedToken) {
+			throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+		}
+
+		if (headers.authorization !== `Bearer ${expectedToken}`) {
 			throw new WebhookAuthorizationError(403);
 		}
 	} else if (authentication === 'headerAuth') {

@@ -3,24 +3,24 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { getExecutePollFunctions, returnJsonArray, type InstanceSettings } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
-import type {
-	IBinaryData,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	INode,
-	INodeType,
-	INodeTypes,
-	IPollFunctions,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	IWorkflowExecuteAdditionalData,
-	NodeTypeAndVersion,
-	VersionedNodeType,
-	Workflow,
-	WorkflowHooks,
+import { PollContext, returnJsonArray } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
+import {
+	createDeferredPromise,
+	type IBinaryData,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type IHttpRequestOptions,
+	type INode,
+	type INodeType,
+	type INodeTypes,
+	type ITriggerFunctions,
+	type IWebhookFunctions,
+	type IWorkflowExecuteAdditionalData,
+	type NodeTypeAndVersion,
+	type VersionedNodeType,
+	type Workflow,
 } from 'n8n-workflow';
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
@@ -47,14 +47,6 @@ function getNodeVersion(Trigger: new () => VersionedNodeType, version?: number) 
 	return instance.nodeVersions[version ?? instance.currentVersion];
 }
 
-export async function testVersionedTriggerNode(
-	Trigger: new () => VersionedNodeType,
-	version?: number,
-	options: TestTriggerNodeOptions = {},
-) {
-	return await testTriggerNode(getNodeVersion(Trigger, version), options);
-}
-
 export async function testTriggerNode(
 	Trigger: (new () => INodeType) | INodeType,
 	options: TestTriggerNodeOptions = {},
@@ -76,6 +68,7 @@ export async function testTriggerNode(
 
 	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
 	const helpers = mock<ITriggerFunctions['helpers']>({
+		createDeferredPromise,
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>
 			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
@@ -86,6 +79,8 @@ export async function testTriggerNode(
 		emit,
 		getTimezone: () => timezone,
 		getNode: () => node,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
+			(options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
@@ -96,8 +91,6 @@ export async function testTriggerNode(
 	if (options.mode === 'manual') {
 		expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
 		await response?.manualTriggerFunction?.();
-	} else {
-		expect(response?.manualTriggerFunction).toBeUndefined();
 	}
 
 	return {
@@ -165,6 +158,8 @@ export async function testWebhookTriggerNode(
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
+			(options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);
@@ -193,14 +188,15 @@ export async function testPollingTriggerNode(
 		options.node,
 	) as INode;
 	const workflow = mock<Workflow>({
-		timezone: options.timezone ?? 'Europe/Berlin',
+		timezone,
 		nodeTypes: mock<INodeTypes>({
 			getByNameAndVersion: () => mock<INodeType>({ description: trigger.description }),
 		}),
+		getStaticData: () => options.workflowStaticData ?? {},
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const originalPollingFunctions = getExecutePollFunctions(
+	const pollContext = new PollContext(
 		workflow,
 		node,
 		mock<IWorkflowExecuteAdditionalData>({
@@ -212,28 +208,19 @@ export async function testPollingTriggerNode(
 					return options as IHttpRequestOptions;
 				},
 			}),
-			hooks: mock<WorkflowHooks>(),
+			hooks: mock<ExecutionLifecycleHooks>(),
 		}),
 		mode,
 		'init',
 	);
 
-	async function getCredentials<T extends object = ICredentialDataDecryptedObject>(): Promise<T> {
-		return (options.credential ?? {}) as T;
-	}
+	pollContext.getNode = () => node;
+	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>
+		(options.credential ?? {}) as T;
+	pollContext.getNodeParameter = (parameterName, fallback) =>
+		get(node.parameters, parameterName) ?? fallback;
 
-	const pollingFunctions = mock<IPollFunctions>({
-		...originalPollingFunctions,
-		getCredentials,
-		getTimezone: () => timezone,
-		getNode: () => node,
-		getMode: () => mode,
-		getInstanceId: () => 'instanceId',
-		getWorkflowStaticData: () => options.workflowStaticData ?? {},
-		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
-	});
-
-	const response = await trigger.poll?.call(pollingFunctions);
+	const response = await trigger.poll?.call(pollContext);
 
 	return {
 		response,

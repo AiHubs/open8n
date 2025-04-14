@@ -1,28 +1,28 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
-
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import {
-	inputSchemaField,
-	jsonSchemaExampleField,
+	buildInputSchemaField,
+	buildJsonSchemaExampleField,
 	schemaTypeField,
-} from '../../../utils/descriptions';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
-import type { JSONSchema7 } from 'json-schema';
+} from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import type { DynamicZodObject } from '../../../types/zod.types';
 
 export class ToolCode implements INodeType {
@@ -30,6 +30,7 @@ export class ToolCode implements INodeType {
 		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
@@ -53,10 +54,10 @@ export class ToolCode implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'See an example of a conversational agent with custom tool written in JavaScript <a href="/templates/1963" target="_blank">here</a>.',
@@ -171,12 +172,12 @@ export class ToolCode implements INodeType {
 				default: false,
 			},
 			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
-			jsonSchemaExampleField,
-			inputSchemaField,
+			buildJsonSchemaExampleField({ showExtraProps: { specifyInputSchema: [true] } }),
+			buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } }),
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
@@ -220,7 +221,7 @@ export class ToolCode implements INodeType {
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
-			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
 			let response: string = '';
 			let executionError: ExecutionError | undefined;
@@ -244,9 +245,9 @@ export class ToolCode implements INodeType {
 			}
 
 			if (executionError) {
-				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, executionError);
 			} else {
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 			}
 
 			return response;
@@ -273,10 +274,9 @@ export class ToolCode implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = await zodSchemaSandbox.runCode<DynamicZodObject>();
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...commonToolOptions,
 				});

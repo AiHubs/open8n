@@ -12,7 +12,6 @@ import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
-const MOCK_RENEW_OFFSET = 259200;
 
 let owner: User;
 let member: User;
@@ -30,7 +29,6 @@ beforeAll(async () => {
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
-	config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 });
 
 afterEach(async () => {
@@ -116,7 +114,7 @@ describe('POST /license/renew', () => {
 const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,
@@ -132,7 +130,7 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,

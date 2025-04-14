@@ -1,4 +1,4 @@
-import type { AuthenticationMethod } from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -6,9 +6,9 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole } from '@/databases/entities/user';
+import type { GlobalRole, User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
@@ -338,6 +338,7 @@ export type RelayEventMap = {
 
 	'execution-throttled': {
 		executionId: string;
+		type: ConcurrencyQueueType;
 	};
 
 	'execution-started-during-bootup': {
@@ -351,10 +352,7 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: GlobalRole;
-		members: Array<{
-			userId: string;
-			role: ProjectRole;
-		}>;
+		members: ProjectRelation[];
 		projectId: string;
 	};
 
@@ -383,12 +381,14 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 
@@ -398,6 +398,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -406,6 +407,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;
@@ -421,6 +423,7 @@ export type RelayEventMap = {
 	};
 
 	'license-community-plus-registered': {
+		userId: User['id'];
 		email: string;
 		licenseKey: string;
 	};

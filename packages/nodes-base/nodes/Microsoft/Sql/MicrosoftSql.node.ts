@@ -9,20 +9,20 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { ITables } from './interfaces';
+import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 import {
 	configurePool,
 	createTableStruct,
 	deleteOperation,
+	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	updateOperation,
 } from './GenericFunctions';
-
-import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+import type { ITables } from './interfaces';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +35,8 @@ export class MicrosoftSql implements INodeType {
 		defaults: {
 			name: 'Microsoft SQL',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		parameterPane: 'wide',
 		credentials: [
@@ -268,17 +268,8 @@ export class MicrosoftSql implements INodeType {
 							this.evaluateExpression(resolvable, i) as string,
 						);
 					}
-
-					const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
-
-					const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
-
-					for (const entry of result) {
-						returnData.push({
-							json: entry,
-							pairedItem: [{ item: i }],
-						});
-					}
+					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i);
+					returnData = returnData.concat(results);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({
