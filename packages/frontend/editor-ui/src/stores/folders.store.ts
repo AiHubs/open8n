@@ -19,6 +19,15 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	const totalWorkflowCount = ref<number>(0);
 
+	// Resource that is currently being dragged
+	const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string; name: string } | null>(
+		null,
+	);
+	// Only folders and projects can be drop targets
+	const activeDropTarget = ref<{ type: 'folder' | 'project'; id: string; name: string } | null>(
+		null,
+	);
+
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
@@ -268,5 +277,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		moveFolder,
 		fetchFolderContent,
 		getHiddenBreadcrumbsItems,
+		draggedElement,
+		activeDropTarget,
 	};
 });

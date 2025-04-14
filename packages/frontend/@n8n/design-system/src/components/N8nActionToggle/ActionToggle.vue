@@ -21,6 +21,7 @@ interface ActionToggleProps {
 	loadingRowCount?: number;
 	disabled?: boolean;
 	popperClass?: string;
+	trigger?: 'click' | 'hover';
 }
 
 defineOptions({ name: 'N8nActionToggle' });
@@ -35,13 +36,17 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	loadingRowCount: 3,
 	disabled: false,
 	popperClass: '',
+	trigger: 'click',
 });
 
 const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
+
 const emit = defineEmits<{
 	action: [value: string];
 	'visible-change': [value: boolean];
+	'item-mouseup': [action: UserAction];
 }>();
+
 const onCommand = (value: string) => emit('action', value);
 const onVisibleChange = (value: boolean) => emit('visible-change', value);
 const openActionToggle = (isOpen: boolean) => {
@@ -50,6 +55,11 @@ const openActionToggle = (isOpen: boolean) => {
 	} else {
 		actionToggleRef.value?.handleClose();
 	}
+};
+
+const onActionMouseUp = (action: UserAction) => {
+	emit('item-mouseup', action);
+	actionToggleRef.value?.handleClose();
 };
 
 defineExpose({
@@ -65,7 +75,7 @@ defineExpose({
 			:size="size"
 			:disabled="disabled"
 			:popper-class="popperClass"
-			trigger="click"
+			:trigger="trigger"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
@@ -97,6 +107,7 @@ defineExpose({
 						:command="action.value"
 						:disabled="action.disabled"
 						:data-test-id="`action-${action.value}`"
+						@mouseup="onActionMouseUp(action)"
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
